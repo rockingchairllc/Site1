@@ -129,8 +129,10 @@ Drop Shadows
 
 /* Curved Shadows - This only does the left side */
 .curved:before {
+/*
 	top:10px;
 	bottom:10px;
+*/
 	left:0;
 	right:50%;
 	-moz-box-shadow: 0 0 20px rgb(36,113,190);
