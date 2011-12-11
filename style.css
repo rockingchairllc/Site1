@@ -163,10 +163,8 @@ body {
 .wrapper {
 	width: 900px;
 	position: relative;
+	margin: 20px auto;
 	top: 0px;
-	left: 20px;
-	right: 20px;
-	bottom: 0px;
 	padding: 40px;
 }
 
