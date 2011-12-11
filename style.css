@@ -159,13 +159,14 @@ body {
 	line-height: 1.28;
 }
 
-/* Centers a fixed width */
+/* Centers a fixed width
 .wrapper {
 	width: 900px;
 	position: relative;
 	margin: 20px auto;
 	padding: 40px;
 }
+*/
 
 /********************************************************************************************
  Header
