@@ -1,0 +1,2422 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>totter</title>
+	<link rel="apple-touch-icon" href="http://letstotter.com/static/images/apple-touch-icon.png" />
+    <link rel="stylesheet" href="http://letstotter.com/static/style-merged.css" >
+	<link rel="shortcut icon" href="http://letstotter.com/static/images/favicon.png" />
+    
+    
+    
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.js"></script>
+<script src="http://letstotter.com/static/js/jquery.jeditable.js" type="text/javascript" charset="utf-8"></script>
+<script src="http://letstotter.com/static/js/jquery.autoresize.js"></script>
+
+<script src="http://letstotter.com/static/js/jquery.jeditable.autoresize.js"></script>
+<script src="http://letstotter.com/static/js/jquery.default.js"></script>
+<script type="text/javascript">
+
+        $(document).ready(function(){
+            $('.edit').editable('http://letstotter.com/p/cologne/', {
+                style: 'inherit',
+                cssclass: 'inherit',
+                cancel    : 'Cancel',
+                submit    : 'OK',
+            });
+            $('.edit_area').editable('http://letstotter.com/p/cologne/', { 
+                 type      : 'autoResize',
+                 cancel    : 'Cancel',
+                 submit    : 'OK',
+                 indicator : '<img src="http://letstotter.com/static/images/indicator.gif">',
+                 tooltip   : 'Click to edit...',
+                 autoResize: {}
+             });
+             
+            // All .clickOffs are page-size translucent/transparent background divs
+            // That function to hide their parent containing div when they are clicked
+            // This is so our modal dialogs close when users click outside of them.
+            $('.click_off').each(function() {
+                var $this = $(this);
+                $this.click(function() {
+                    $this.parent().hide();
+                });
+            });
+             
+        });
+                    
+        
+    function hideModalContainer() {
+        $('.modal_container').hide();
+        $('.modal_container .remember').default(); // Reset all textboxes in the modal container to defaults.
+    }
+    
+    function showLoginPrompt() {
+        $('.login_prompt').show();
+    }
+</script>
+
+    <script src="http://letstotter.com/static/js/jquery.autoresize.js"></script>
+    <script src="http://letstotter.com/static/js/jquery.toggler.js"></script>
+    <script src="http://letstotter.com/static/js/jquery.tmpl.js"></script>
+    <script src="http://letstotter.com/static/star-rating/jquery.rating.js"></script>
+    <link rel="stylesheet" href="http://letstotter.com/static/star-rating/jquery.rating.css" >
+    <!-- General -->
+    <script type="text/javascript">
+    function bindAll() {
+        
+        
+        // Creates a toggle function between each of .toggle's children.
+        $('.toggle').toggler('bind');
+        
+        // All .remember textboxes will remember their default values.
+        $('.remember').default('bind');
+        
+        // Have the sort links do a partial refresh instead of a full refresh.
+        $sort_links = $('.sort_by a').each(function() {
+            var url = $(this).attr('href');
+            $(this).click(function(e) {
+                console.log("Performing partial refresh: " + url);
+                e.preventDefault();
+                unbindAll();
+                $('.the_content').load(url + " .the_content>*", function() {
+                    console.log("Completed partial refresh.");
+                    bindAll();
+                });
+            });
+        });
+        
+        star_bindings();
+    }
+    function unbindAll() {
+        $('.toggle').toggler('unbind');
+        $('.remember').default('unbind');
+        $('.sort_by a').unbind('click');
+    }
+    $(document).ready(function(){
+        console.log('document.ready');
+        $('.comment_input').live('keypress', submitkey_binding);
+        $('.comment_input').autoResize({max_width : 100, min_height:'original', extraSpace: 10});
+        
+        // If our URL has #ideapopup on the end, open the add idea popup.
+        anchor = self.document.location.hash;
+        if (anchor == '#ideapopup') {
+            showAddIdea();
+        }
+        
+        bindAll();
+    });
+    
+    
+    
+    </script>
+    <!-- Commentary -->
+    
+    <script id="comment_template" type="text/x-jquery-tmpl">
+    <li class="last_update">
+        <a href="#"><img src="${profile}" width="32" height="32" /></a>
+        <div class="comment_body">
+            {{if author_url}}<a href="${author_url}">{{/if}}<span class="comment_author">${author}</span>{{if author_url}}</a>{{/if}}
+            <span class="comment_text">${text}</span>
+        </div>
+    </li>
+    </script>
+    
+	<script type="text/javascript">
+	    var anon_state = new Array();
+	    function anonOn(idea_id) {
+	        anon_state[idea_id] = true;
+	    }
+	    function anonOff(idea_id) {
+	        anon_state[idea_id] = false;
+	    }
+	    
+		function showComment(idx) {
+		    $('#'+idx + '.idea').find('.project_idea_comments').show();
+		}
+		
+		function hideComment(idx) {
+		    $('#'+idx + '.idea').find('.project_idea_comments').hide();
+		}
+		
+		
+		
+		function submitkey_binding(e) {
+			if( e.keyCode==13 ){ // User pressed enter.
+			    e.preventDefault();
+			    
+                idx = $(this).attr("order");
+                var prjId = "f45b501f-1aa6-44fe-98ba-d975ac758ebf";
+                var cmtdata = $(this).val();
+				var CommentData = JSON.stringify({'data': cmtdata, 'project_id': prjId, 'Idea_id': idx, 'anonymous' : anon_state[idx] || 0 });
+				$('#comments'+idx).find('.enter_to_submit.default').addClass('hidden');
+				$('#comments'+idx).find('.enter_to_submit.throbber').removeClass('hidden');
+				$.ajax({
+					url:"http://letstotter.com/project/f45b501f-1aa6-44fe-98ba-d975ac758ebf/idea/" + idx + "/comment",
+					type: "POST",
+					dataType: "json",
+					data: CommentData,
+					success: function(){
+					    $('#comments'+idx).find('.enter_to_submit.default').removeClass('hidden');
+				        $('#comments'+idx).find('.enter_to_submit.throbber').addClass('hidden');
+				        
+				        if (anon_state[idx]) {
+				            tmpl_data = {'profile' : "http://letstotter.com/static/images/anonymous_profile.jpg", 
+				                'author' : 'Anonymous', 'text' : cmtdata };
+				        } else {
+				            tmpl_data = {'profile' : "http://graph.facebook.com/702883/picture", 
+				                'author' : "Vishal", 'text' : cmtdata, 'author_url' : '#'};
+				        }
+                        
+                        var m_data = $('#comment_template').tmpl(tmpl_data);
+						sibling = $('#comments'+idx).find('.last_update');
+						
+						if (sibling.length > 0) {
+                            sibling.removeClass('last_update');
+                        }
+                        $('#comments'+idx).find('ul.existing_comments').append(m_data);
+						$('#comments'+idx).children('.new_comment').children('.comment_text').val('');
+					}
+				});
+			    
+			}
+		}
+		
+	</script>
+	
+	<!-- Ratings -->
+	<!--  Like Love --!>
+	<script type="text/javascript">
+		function setLiked(context, liked) {
+		    if (liked) {
+                context.find(".like").addClass('hidden');
+                context.find(".unlike").removeClass('hidden');
+            } else {
+                context.find(".unlike").addClass('hidden');
+                context.find(".like").removeClass('hidden');
+            }                
+        }
+        
+        function setLoved(context, loved) {
+            if (loved) {
+                context.find(".love").addClass('hidden');
+                context.find(".unlove").removeClass('hidden');
+            } else {
+                context.find(".unlove").addClass('hidden');
+                context.find(".love").removeClass('hidden');
+            }
+        }
+        
+        // context is some jquery selector '.foo' '#bar' that has the widget underneath it.
+        // idea_id is the id of the idea being liked/disliked/loved/unloved.
+        
+		function unlike(selector, idea_id) {
+		    send_rating($(selector), idea_id, {'like' : 0});
+		}
+		function unlove(selector, idea_id) {
+		    send_rating($(selector), idea_id, {'love' : 0});
+		}
+		
+		function like(selector, idea_id) {
+		    send_rating($(selector), idea_id, {'like' : 1});
+		}
+		function love(selector, idea_id) {
+		    send_rating($(selector), idea_id, {'love' : 1});
+		}
+		
+		function send_rating(context, idea_id, rating) {
+		    
+		    $.ajax({
+				url:"http://letstotter.com/project/f45b501f-1aa6-44fe-98ba-d975ac758ebf/idea/" + idea_id + "/rating",
+				type: "POST",
+				dataType: "json",
+				data: JSON.stringify(rating),
+				success: function(data) {
+				    if (data.rating['liked'])
+    				    setLiked(context, true);
+    				else
+    				    setLiked(context, false);
+    				    
+    				if (data.rating['loved'])
+    				    setLoved(context, true);
+    				else
+    				    setLoved(context, false);
+    				    
+    			    $('#total_rating_' + idea_id).html('Total Rating: ' + data.total_rating);
+				}
+			});
+			
+		}
+	</script>
+	
+	<!-- Add Idea -->
+	<script type="text/javascript">
+	    function showAddIdea() {
+			$('.add_idea').show();
+		}
+		function hideAddIdea() {
+            hideModalContainer();
+        }
+    
+	    function addIdea_to_project() {
+	        
+			var prjId = "f45b501f-1aa6-44fe-98ba-d975ac758ebf";
+			var anonymous = $(".add_idea_modal #anonymous").is(':checked');
+			var IdeaData = JSON.stringify({'data': $(".add_idea_modal textarea").val(), 'project_id': prjId, 'anonymous' : anonymous});
+			$.ajax({
+				url:"http://letstotter.com/project/f45b501f-1aa6-44fe-98ba-d975ac758ebf/idea",
+				type: "POST",
+				dataType: "json",
+				data: IdeaData,
+				success: onSuccess_addIdea
+			});
+			
+			$(".add_idea .throbber").removeClass('hidden');
+			$(".add_idea button").addClass('hidden');
+			
+			unbindAll();
+			
+			function onSuccess_addIdea(data){
+			    // Successfully added our idea to the serverside.
+			    var new_id = data.idea_id;
+			    // Do a partial page refresh to reload the idea list:
+				$('.project').load(location.href + " .project>*", function() {
+				    hideAddIdea();
+				    $('html,body').animate({scrollTop: $("#idea_"+new_id).offset().top},'fast');
+				    $(".add_idea .throbber").addClass('hidden');
+			        $(".add_idea button").removeClass('hidden');
+			        
+			        // Handled in $document.ready:
+			        bindAll();
+			        
+				});
+				
+				/*
+				var prepare_data = '<li><div class="idea_author"><a href="#"><img src=http://graph.facebook.com/702883/picture?type=square"/></a></div>' +
+                    '<div class="idea_body"><div class="idea_meta"><div class="username"><a href="#">Vishal</a></div>' +
+	                '<strong id="rate_value'+new_id+'">Total Rating: 0</strong><div class="like_love">' +
+	                '<a href="#" id="likeidea'+new_id+'" order="1" onClick="addRating(' + new_id + ', 0, 1)">Like It</a> &bull; <a href="#" id="loveidea'+new_id+'" order="1" onClick="addRating(' + new_id + ', 0, 2)">Love It</a>' + 
+	                '</div><!-- like_love --></div><!-- .idea_meta --><div class="idea_description">'+ $(".add_idea_modal textarea").val() +'</div><div class="comment_time">' +
+                    '<a href="javascript:void(0)" class="comment_on_idea" onClick="showComment('+new_id+')">Comment</a>&#124;September 18th at 9:30am</div><!-- .comment_time -->' +
+                    '<ul class="project_idea_comments" id="comments'+new_id+'"><li class="new_comment first_update"><input class="comment_text" type="text" value="Start Typing" order="'+new_id+'"/><br /><span class="enter_to_submit">Push Enter to Submit</span>' +
+                    '</li><!-- .new_comment --><!-- Append all new comments to the ul.project_idea_comments --></ul><!-- .project_idea_comments --></div><!-- idea_body --></li>';
+                $('.project_ideas').prepend(prepare_data);
+                $('#comments'+new_id).children('.new_comment').children('.comment_text').bind('keypress', submitkey_binding);*/
+			}
+						
+		}
+	</script>
+	<!--  Star -->
+	<script type="text/javascript">
+    function rateIt() {
+        console.log(this);
+        //$('.star_tool_tip').toggle();
+    }
+    function star_bindings() {
+        $('input[type=radio].star').rating();
+        $('.rate_it').each(function() {
+            var $idea = $(this).closest('.idea');
+            $(this).click(function() {
+                
+                // Show the corresponding star_rating box:
+                $idea.find('.star_rating').show();
+                
+            });
+        });
+        
+        $('.star_tool_tip').each(function(){
+            var $idea = $(this).closest('.idea');
+            var idea_id = $idea.attr('id');
+            var rating_count = $idea.find('.rating_count');
+            var avg_stars = $idea.find('.idea_meta li.star');
+            var stars = $(this).find('.star');
+            var index = 0;
+            
+            function on_rating_success(data) {
+                var usr_stars = data.rating['stars'];
+                // Set all stars to inactive.
+                stars.each(function() { $(this).removeClass('star_active'); });
+                // Set all stars 0..usr_stars to active.
+                for (var i = 0;  i < usr_stars; ++i) {
+                    $(stars[i]).addClass('star_active');
+                }
+                
+                var tot_stars = data['total_stars'];
+                avg_stars.each(function() { $(this).removeClass('star_active'); });
+                // Set all stars 0..total_stars to active.
+                for (var i = 0;  i < tot_stars; ++i) {
+                    $(avg_stars[i]).addClass('star_active');
+                }
+                
+                $(rating_count).text(data['rating_count']);
+                
+                $idea.find('.star_rating').hide();
+            }
+            
+            stars.each(function() {
+                var myIndex = index;
+                index += 1;
+                $(this).click(function() {
+                    
+                    console.log('Sending ajax rating.');
+                    $.ajax({
+                        url:"http://letstotter.com/project/f45b501f-1aa6-44fe-98ba-d975ac758ebf/idea/"+idea_id+"/rating",
+                        type: "POST",
+                        dataType: "json",
+                        data: JSON.stringify({'stars' : myIndex + 1}),
+                        success: on_rating_success
+                    });
+                    
+                });
+            });
+            
+            var cancelButton = $(this).find('.rating-cancel');
+            $(cancelButton).click(function() {
+                
+                console.log('Sending ajax rating.');
+                $.ajax({
+                    url:"http://letstotter.com/project/f45b501f-1aa6-44fe-98ba-d975ac758ebf/idea/"+idea_id+"/rating",
+                    type: "POST",
+                    dataType: "json",
+                    data: JSON.stringify({'stars' : 0}),
+                    success: on_rating_success
+                });
+                
+            });
+        });
+    }
+    </script>
+
+</head>
+<body>
+
+	<div class="wrapper ">
+            
+            <!-- Begin the Header -->
+            <div class="header">
+                
+                <div class="user_info">
+                    <h4 class="username_first_name">Vishal</h4>
+                    <ul class="tool_tip drop-shadow">
+                        <li><a href="http://letstotter.com/user/d71f2c35-7502-4032-89eb-c7315ff9b25e/">View Profile</a></li>
+                        <li><a href="http://letstotter.com/logout">Logout</a></li>
+                    </ul>
+                    <img src="http://graph.facebook.com/702883/picture" class="user_photo" />
+                </div><!-- .user_info -->
+                
+                <h1 class="logo"><a href="/">totter</a></h1>
+                
+                <!-- Clear the float to prevent the header from collapsing -->
+                <div class="clearfloat"></div>
+                
+			</div><!-- .header -->
+			
+            
+            
+            <div class="login_prompt modal_container">
+                <div class="dark_overlay click_off"></div>
+                <div class="login_prompt_modal modal_dialog drop-shadow">
+                    <h1><a href="http://letstotter.com/login">Login</a> or <a href="http://letstotter.com/register">sign up</a> to contribute.</h1>
+                    <button type="button" onClick="hideModalContainer()">Go back to browsing</a>
+                </div><!-- login_prompt_modal -->
+            </div><!-- .login_prompt -->
+            
+            <!-- Begin the main content. -->
+            <div class="project">
+            <div class="title">
+            <h1 id="title" class="title ">name for a new cologne</h1> 
+            
+            </div>
+            <h3>by <a href="http://letstotter.com/user/c14de178-fc46-4308-a8f5-72bc2e90a6d9/">Jim Wagner</a></h3>
+            
+            <div class="the_content">
+                <ul class="tabs">
+                    
+                    
+                    <li>
+                        <a href="http://letstotter.com/p/cologne/" >
+                        Overview
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a href="http://letstotter.com/p/cologne/ideas" class="active_tab">
+                        Ideas
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a href="http://letstotter.com/p/cologne/people" >
+                        People
+                        </a>
+                    </li>
+                    
+                </ul><!-- .tabs -->
+                <ul class="project_stats">
+                    <li>
+                        People<br />
+                        <span class="project_stat">1</span>
+                    </li>
+                    <li>
+                        Ideas<br />
+                        <span class="project_stat"><a href="http://letstotter.com/p/cologne//ideas">1</a></span>
+                    </li>
+                    <li>
+                        Deadline<br />
+                        <span class="project_stat">None</span>
+                    </li>
+                    
+
+<!-- Just show the overlay. -->
+<button class="add_idea_button" onclick="showAddIdea()">Add Idea</button>
+
+
+                </ul><!-- .project_stats -->
+            
+            
+            <!-- Add Idea and Modal Overlay -->
+            <div class="add_idea modal_container">
+                <div class="add_idea_overlay dark_overlay click_off"></div>
+                <div class="add_idea_modal modal_dialog drop-shadow">
+                    <h1>Add Idea</h1>
+                    <div class="anonymous"><label for="anonymous">Anonymous:</label><input type="checkbox" id="anonymous"/></div>
+                    <textarea class="remember">Start typing your idea...</textarea>
+                    <a href="javascript:void(0)" onClick="hideAddIdea()">Cancel</a>
+                    <div class="throbber hidden">
+                        <span>Posting...</span>
+                        <img src="http://letstotter.com/static/images/throbber.gif"/>
+                    </div>
+                    <button type="button" onClick="addIdea_to_project()">Add Idea</button>
+                </div><!-- idea_idea_modal -->
+            </div><!-- .add_idea -->
+            
+            
+            
+            
+            
+            <!-- END Add Idea and Modal Overlay -->
+            <div class="sort_by">
+                Sort by:
+                
+                <a href="http://letstotter.com/p/cologne/ideas?sort=date">Date</a> |
+                Rating</a> |
+                <a href="http://letstotter.com/p/cologne/ideas?sort=user">User</a>
+            </div><!-- .sort_by -->
+            
+            
+            <ul class="project_ideas">
+            
+            
+                
+                
+                
+                
+            	 
+                <li class="first_idea">
+                
+            	    <div id="2" class="idea">
+                        <a name="idea_2" id="idea_2"></a>
+                        <div class="idea_author">
+                            <a href="#">
+                                
+                                <img src="http://letstotter.com/static/images/anonymous_profile.jpg" />
+                                
+                            </a>
+                        </div><!-- .idea_author -->
+                        <div class="idea_body">
+                            <div class="idea_meta">
+                            
+                            <div class="username">Anonymous</div>
+                            
+                            <div class="rating_system">
+                                
+                                <span class="total_rating" id="total_rating_2" >Total Rating: <span class="rating_value">0</span></span>
+                                <div class="like_love" id="like_love_2">
+                                    <a class="like " onClick="like('#like_love_2', 2)">Like It (+1)</a>
+                                    <a class="unlike hidden"onClick="unlike('#like_love_2', 2)">Unlike It</a>
+                                    &bull;
+                                    <a class="love " onClick="love('#like_love_2', 2)">Love It (+2)</a>
+                                    <a class="unlove hidden" onClick="unlove('#like_love_2', 2)">Unlove It</a>
+                                </div><!-- like_love -->
+                                
+                            </div>
+                            <div class="toggle toggle_comments">
+                                <a class="hidden" onclick="showComment(2)">show 2 comments</a>
+                                <a class=""       onclick="hideComment(2)">hide comments</a>
+                            </div><!-- .toggle_comments -->
+                            <div class="comment_time">
+                                December 11 at 04:00 PM EST
+                            </div><!-- .comment_time -->
+                            
+                            </div><!-- .idea_meta -->
+                            <div class="idea_description">A cologne called &#34;anonymous&#34;, like me!</div>
+                            
+                             
+                            <ul class="project_idea_comments" id="comments2">
+                                <li class="existing_comments">
+                                    <ul class="existing_comments">
+                                    <!-- Append all new comments to the ul.project_idea_comments -->
+                                    
+                                         
+                                            <li class="first_update">
+                                        	
+                                            <a href="#">
+                                                
+                                                <img src="http://graph.facebook.com/702883/picture?type=square" width="32" height="32" />
+                                                
+                                            </a>
+                                            <div class="comment_body">
+                                                
+                                                <span class="comment_author"><a href="http://letstotter.com/user/d71f2c35-7502-4032-89eb-c7315ff9b25e/">Vishal</a></span>
+                                                
+                                                <span class="comment_text">Or a similar theme, maybe &#34;incognito&#34;</span>
+                                            </div>
+                                            </li>
+                                    
+                                        
+                                            <li class="last_update">
+                                        	
+                                            <a href="#">
+                                                
+                                                <img src="http://letstotter.com/static/images/anonymous_profile.jpg" width="32" height="32" />
+                                                
+                                            </a>
+                                            <div class="comment_body">
+                                                
+                                                <span class="comment_author">Anonymous</span>
+                                                
+                                                <span class="comment_text">oops, meant to post that anonymously!</span>
+                                            </div>
+                                            </li>
+                                    
+                                    </ul>
+                                </li>
+                                <li class="new_comment first_update">
+                                    
+                                    <div class="toggle">
+                                    <div>
+                                        <img onclick="anonOn(2)" src="http://graph.facebook.com/702883/picture?type=square" width="32" height="32" />
+                                        <span class="comment_anon_status">Currently posting as <b>Vishal</b>, click picture on left to post as Anonymous</span>
+                                    </div>
+                                    <div class="hidden">
+                                        <img onclick="anonOff(2)" src="http://letstotter.com/static/images/anonymous_profile.jpg" width="32" height="32" />
+                                        <span class="comment_anon_status">Currently posting as <font color="red">Anonymous</font>, click picture on left to post as Vishal.</span>
+                                    </div>
+                                    </div>
+                                    
+                                    <textarea class="comment_text comment_input remember"  type="text" order="2">Comment</textarea><br />
+                                    
+                                    <span class="enter_to_submit default">Push Enter to Submit</span>
+                                    <span class="enter_to_submit throbber hidden">Posting...<img src="http://letstotter.com/static/images/throbber.gif"/></span>
+                                    
+                                </li><!-- .new_comment -->
+                            </ul><!-- .project_idea_comments -->
+                        </div><!-- idea_body -->
+                    </div> <!-- .idea -->
+                </li>
+            
+            </ul><!-- .project_ideas -->
+
+            </div><!-- .the_content -->
+
+
+
+    
+
+
+
+
+    </div> <!-- .wrapper -->
+    
+
+    
+
+
+<div id="pDebug" style="display:none;">
+    <script type="text/javascript">
+      var DEBUG_TOOLBAR_STATIC_PATH = 'http://letstotter.com/_debug_toolbar/static/';
+    </script>
+    <script type="text/javascript" 
+            src="http://letstotter.com/_debug_toolbar/static/js/jquery-1.6.4.min.js"></script>
+    <script type="text/javascript" 
+            src="http://letstotter.com/_debug_toolbar/static/js/jquery.tablesorter.min.js"></script>
+    <script type="text/javascript" 
+            src="http://letstotter.com/_debug_toolbar/static/js/toolbar.js"></script>
+    <script type="text/javascript">$.noConflict(true);</script>
+
+    <div style="display: none;" id="pDebugToolbar">
+        <ol id="pDebugPanelList">
+            
+			<li>
+              <a id="pHideToolBarButton" href="#" 
+                 title="Hide Toolbar">Hide &raquo;</a></li>
+			
+			
+				<li id="pDebugVersionPanel">
+					
+						<a href="" 
+                           title="Versions" 
+                           class="pDebugVersionPanel">
+					
+
+					Versions
+					
+
+					
+						</a>
+					
+                    
+				</li>
+			
+				<li id="pDebugSettingsPanel">
+					
+						<a href="" 
+                           title="Settings" 
+                           class="pDebugSettingsPanel">
+					
+
+					Settings
+					
+
+					
+						</a>
+					
+                    
+				</li>
+			
+				<li id="pDebugHeaderPanel">
+					
+						<a href="" 
+                           title="HTTP Headers" 
+                           class="pDebugHeaderPanel">
+					
+
+					HTTP Headers
+					
+
+					
+						</a>
+					
+                    
+				</li>
+			
+				<li id="pDebugRequestVarsPanel">
+					
+						<a href="" 
+                           title="Request Vars" 
+                           class="pDebugRequestVarsPanel">
+					
+
+					Request Vars
+					
+
+					
+						</a>
+					
+                    
+				</li>
+			
+				<li id="pDebugTemplatePanel">
+					
+						<a href="" 
+                           title="Renderings" 
+                           class="pDebugTemplatePanel">
+					
+
+					Renderings
+					
+                        <br /><small>1 rendering</small>
+                    
+
+					
+						</a>
+					
+                    
+				</li>
+			
+				<li id="pDebugLoggingPanel">
+					
+						<a href="" 
+                           title="Log Messages" 
+                           class="pDebugLoggingPanel">
+					
+
+					Logging
+					
+                        <br /><small>2 messages</small>
+                    
+
+					
+						</a>
+					
+                    
+				</li>
+			
+				<li id="pDebugPerformancePanel">
+					
+						<a href="" 
+                           title="Performance" 
+                           class="pDebugPerformancePanel">
+					
+
+					Performance
+					
+                        <br /><small>CPU: 26.00ms (29.32ms)</small>
+                    
+
+					
+						</a>
+					
+                    
+                    <span class="switch inactive" 
+                          title="Enable or disable the panel"></span>
+                    
+				</li>
+			
+				<li id="pDebugRoutesPanel">
+					
+						<a href="" 
+                           title="Routes" 
+                           class="pDebugRoutesPanel">
+					
+
+					Routes
+					
+
+					
+						</a>
+					
+                    
+				</li>
+			
+				<li id="pDebugSQLAlchemyPanel">
+					
+						<a href="" 
+                           title="SQLAlchemy queries" 
+                           class="pDebugSQLAlchemyPanel">
+					
+
+					SQLAlchemy
+					
+                        <br /><small>13 queries</small>
+                    
+
+					
+						</a>
+					
+                    
+				</li>
+			
+        </ol>
+    </div>
+    <div style="display:none;" id="pDebugToolbarHandle">
+		<a title="Show Toolbar" id="pShowToolBarButton" href="#">&laquo;</a>
+	</div>
+	
+		
+			<div id="pDebugVersionPanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>Versions</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        <h4>Platform</h4>
+<div>Python 2.6.7 (r267:88850, Jun  4 2011, 04:34:02) 
+[GCC 4.4.4 20100726 (Red Hat 4.4.4-13)] on Linux-2.6.35.14-103.47.amzn1.x86_64-x86_64-with-glibc2.2.5</div>
+
+<h4>Packages</h4>
+
+<table>
+	<thead>
+		<tr>
+			<th>Package Name</th>
+			<th>Version</th>
+		</tr>
+	</thead>
+	<tbody>
+		
+			<tr class="pDebugOdd">
+				<td>aws-cfn-bootstrap</td>
+				<td>1.0</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>Chameleon</td>
+				<td>2.5.3</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>Cheetah</td>
+				<td>2.4.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>cloud-init</td>
+				<td>0.5.15</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>configobj</td>
+				<td>4.6.0</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>distribute</td>
+				<td>0.6.10</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>flup</td>
+				<td>1.0.3.dev-20110405</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>foolscap</td>
+				<td>0.4.2</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>fpconst</td>
+				<td>0.7.3</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>gevent</td>
+				<td>0.13.6</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>gevent-socketio</td>
+				<td>0.2.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>gevent-websocket</td>
+				<td>0.2.3</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>greenlet</td>
+				<td>0.3.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>iniparse</td>
+				<td>0.3.1</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>iotop</td>
+				<td>0.3.2</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>ipython</td>
+				<td>0.10</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>Jinja2</td>
+				<td>2.6</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>lockfile</td>
+				<td>0.8</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>M2Crypto</td>
+				<td>0.20.2</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>Mako</td>
+				<td>0.5.0</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>Markdown</td>
+				<td>2.0.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>MarkupSafe</td>
+				<td>0.15</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>mercurial</td>
+				<td>1.8.4</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>MySQL-python</td>
+				<td>1.2.3c1</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>ordereddict</td>
+				<td>1.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>Paste</td>
+				<td>1.7.5.1</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>PasteDeploy</td>
+				<td>1.5.0</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>PasteScript</td>
+				<td>1.7.5</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pip</td>
+				<td>1.0.2</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pycurl</td>
+				<td>7.19.0</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>Pygments</td>
+				<td>1.1.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pygpgme</td>
+				<td>0.1</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyinotify</td>
+				<td>0.9.2</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pyOpenSSL</td>
+				<td>0.10</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyramid</td>
+				<td>1.2.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pyramid-debugtoolbar</td>
+				<td>0.9.4</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyramid-jinja2</td>
+				<td>1.2</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pyramid-socketio</td>
+				<td>0.8</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyramid-tm</td>
+				<td>0.3</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pysqlite</td>
+				<td>2.6.0</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>Python</td>
+				<td>2.6.7</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>python-daemon</td>
+				<td>1.5.2</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pytz</td>
+				<td>2011n</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>PyXML</td>
+				<td>0.8.4</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>PyYAML</td>
+				<td>3.09</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>repoze.lru</td>
+				<td>0.4</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>requests</td>
+				<td>0.8.2</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>setuptools</td>
+				<td>0.6c11</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>SOAPpy</td>
+				<td>0.11.6</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>SQLAlchemy</td>
+				<td>0.7.3</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>sqlamp</td>
+				<td>0.6</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>totter</td>
+				<td>0.0</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>transaction</td>
+				<td>1.1.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>translationstring</td>
+				<td>0.4</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>Twisted-Core</td>
+				<td>8.2.0</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>Twisted-Web</td>
+				<td>8.2.0</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>unittest2</td>
+				<td>0.5.1</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>urlgrabber</td>
+				<td>3.9.1</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>venusian</td>
+				<td>1.0a2</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>WebOb</td>
+				<td>1.2b2</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>yum-metadata-parser</td>
+				<td>1.1.2</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>zope.component</td>
+				<td>3.11.0</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>zope.deprecation</td>
+				<td>3.5.0</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>zope.event</td>
+				<td>3.5.1</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>zope.interface</td>
+				<td>3.8.0</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>zope.sqlalchemy</td>
+				<td>0.6.1</td>
+			</tr>
+		
+	</tbody>
+</table>
+				    </div>
+				</div>
+			</div>
+		
+	
+		
+			<div id="pDebugSettingsPanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>Settings</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        <table>
+	<thead>
+		<tr>
+			<th>Key</th>
+			<th>Value</th>
+		</tr>
+	</thead>
+	<tbody>
+		
+			<tr class="pDebugOdd">
+				<td>debugtoolbar.enabled</td>
+				<td>True</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>debugtoolbar.hosts</td>
+				<td>[&#39;99.141.9.161&#39;, &#39;174.253.19.195&#39;, &#39;108.16.117.144&#39;, &#39;174.253.28.0&#39;, &#39;75.34.17.4&#39;]</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>debugtoolbar.intercept_exc</td>
+				<td>&#39;debug&#39;</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>debugtoolbar.intercept_redirects</td>
+				<td>False</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>debugtoolbar.panels</td>
+				<td>[&lt;class &#39;pyramid_debugtoolbar.panels.versions.VersionDebugPanel&#39;&gt;, &lt;class &#39;pyramid_debugtoolbar.panels.settings.SettingsDebugPanel&#39;&gt;, &lt;class &#39;pyramid_debugtoolbar.panels.headers.HeaderDebugPanel&#39;&gt;, &lt;class &#39;pyramid_debugtoolbar.panels.request_vars.RequestVarsDebugPanel&#39;&gt;, &lt;class &#39;pyramid_debugtoolbar.panels.renderings.RenderingsDebugPanel&#39;&gt;, &lt;class &#39;pyramid_debugtoolbar.panels.logger.LoggingPanel&#39;&gt;, &lt;class &#39;pyramid_debugtoolbar.panels.performance.PerformanceDebugPanel&#39;&gt;, &lt;class &#39;pyramid_debugtoolbar.panels.routes.RoutesDebugPanel&#39;&gt;, &lt;class &#39;pyramid_debugtoolbar.panels.sqla.SQLADebugPanel&#39;&gt;]</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>facebook.app_id</td>
+				<td>&#39;252211568169520&#39;</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>facebook.secret</td>
+				<td>&#39;5027b4a31969d294384814aaaba87153&#39;</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>jinja2.directories</td>
+				<td>&#39;totter:templates&#39;</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>jinja2.extensions</td>
+				<td>[&#39;jinja2.ext.i18n&#39;]</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>jinja2.filters</td>
+				<td>&#39;\ntojson = totter.template._tojson_filter\nmodel_url = pyramid_jinja2.filters:model_url_filter\nroute_url = pyramid_jinja2.filters:route_url_filter\ntimefmt = totter.template.timefmt&#39;</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>jinja2.i18n.domain</td>
+				<td>&#39;totter&#39;</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>notification.root_url</td>
+				<td>&#39;http://localhost:6543&#39;</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyramid.debug_authorization</td>
+				<td>False</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pyramid.debug_notfound</td>
+				<td>False</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyramid.debug_routematch</td>
+				<td>False</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pyramid.debug_templates</td>
+				<td>False</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyramid.default_locale_name</td>
+				<td>&#39;en&#39;</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pyramid.includes</td>
+				<td>&#39;pyramid_debugtoolbar\npyramid_tm&#39;</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyramid.prevent_http_cache</td>
+				<td>False</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pyramid.reload_assets</td>
+				<td>False</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>pyramid.reload_resources</td>
+				<td>False</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>pyramid.reload_templates</td>
+				<td>True</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>sqlalchemy.url</td>
+				<td>&#39;mysql+mysqldb://totter@localhost/totter&#39;</td>
+			</tr>
+		
+	</tbody>
+</table>
+				    </div>
+				</div>
+			</div>
+		
+	
+		
+			<div id="pDebugHeaderPanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>HTTP Headers</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        <h4>Request Headers</h4>
+<table>
+	<thead>
+		<tr>
+			<th>Key</th>
+			<th>Value</th>
+		</tr>
+	</thead>
+	<tbody>
+		
+			<tr class="pDebugOdd">
+				<td>HTTP_ACCEPT</td>
+				<td>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>HTTP_ACCEPT_ENCODING</td>
+				<td>gzip, deflate</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>HTTP_ACCEPT_LANGUAGE</td>
+				<td>en-us</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>HTTP_CONNECTION</td>
+				<td>keep-alive</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>HTTP_COOKIE</td>
+				<td>auth_tkt=&#34;21194515c9fee126ea354c05a225fc694ee49000ZDcxZjJjMzUtNzUwMi00MDMyLTg5ZWItYzczMTVmZjliMjVl!userid_type:b64str&#34;; fc=fcVal=1565896304291054208; session=e31502cab2927ae79428b3a90cb85739fdd830adgAJK3x7lTkdB07jyjXdgJH1xAShVCHJlZmVycmVycQJOVQpwcm9qZWN0X2lkcQNdcQRVJGY0NWI1MDFmLTFhYTYtNDRmZS05OGJhLWQ5NzVhYzc1OGViZnEFYXWHcQYu; fbsr_252211568169520=adxGRHaZlgEiP3wFk-8HHVp7_MuHnXTZ20B6XgIbr6M.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsImNvZGUiOiIyLkFRQmVlLU4wcTFySGI1MnAuMzYwMC4xMzIzNjA4NDAwLjEtNzAyODgzfFBnaGd3TUZnZmtRYjlUSXBSeUNJeUVoR2ZlYyIsImlzc3VlZF9hdCI6MTMyMzYwMTk2MywidXNlcl9pZCI6IjcwMjg4MyJ9; auth_tkt=&#34;21194515c9fee126ea354c05a225fc694ee49000ZDcxZjJjMzUtNzUwMi00MDMyLTg5ZWItYzczMTVmZjliMjVl!userid_type:b64str&#34;</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>HTTP_HOST</td>
+				<td>letstotter.com</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>HTTP_REFERER</td>
+				<td>http://letstotter.com/p/cologne/</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>HTTP_USER_AGENT</td>
+				<td>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2) AppleWebKit/534.51.22 (KHTML, like Gecko) Version/5.1.1 Safari/534.51.22</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>PATH_INFO</td>
+				<td>/p/cologne/ideas</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>QUERY_STRING</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>REMOTE_ADDR</td>
+				<td>108.16.117.144</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>REQUEST_METHOD</td>
+				<td>GET</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>SCRIPT_NAME</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>SERVER_NAME</td>
+				<td>letstotter.com</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>SERVER_PORT</td>
+				<td>80</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>SERVER_PROTOCOL</td>
+				<td>HTTP/1.1</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>SERVER_SOFTWARE</td>
+				<td>lighttpd/1.4.29</td>
+			</tr>
+		
+	</tbody>
+</table>
+
+<h4>Response Headers</h4>
+<table>
+	<thead>
+		<tr>
+			<th>Key</th>
+			<th>Value</th>
+		</tr>
+	</thead>
+	<tbody>
+		
+			<tr class="pDebugOdd">
+				<td>Content-Length</td>
+				<td>26948</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>Content-Type</td>
+				<td>text/html; charset=UTF-8</td>
+			</tr>
+		
+	</tbody>
+</table>
+				    </div>
+				</div>
+			</div>
+		
+	
+		
+			<div id="pDebugRequestVarsPanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>Request Vars</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        <h4>Cookie Variables</h4>
+
+	<table>
+		<colgroup>
+			<col style="width:20%"/>
+			<col/>
+		</colgroup>
+		<thead>
+			<tr>
+				<th>Variable</th>
+				<th>Value</th>
+			</tr>
+		</thead>
+		<tbody>
+			
+				<tr class="pDebugOdd">
+					<td>session</td>
+					<td>e31502cab2927ae79428b3a90cb85739fdd830adgAJK3x7lTkdB07jyjXdgJH1xAShVCHJlZmVycmVycQJOVQpwcm9qZWN0X2lkcQNdcQRVJGY0NWI1MDFmLTFhYTYtNDRmZS05OGJhLWQ5NzVhYzc1OGViZnEFYXWHcQYu</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>fc</td>
+					<td>fcVal=1565896304291054208</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>auth_tkt</td>
+					<td>21194515c9fee126ea354c05a225fc694ee49000ZDcxZjJjMzUtNzUwMi00MDMyLTg5ZWItYzczMTVmZjliMjVl!userid_type:b64str</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>fbsr_252211568169520</td>
+					<td>adxGRHaZlgEiP3wFk-8HHVp7_MuHnXTZ20B6XgIbr6M.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsImNvZGUiOiIyLkFRQmVlLU4wcTFySGI1MnAuMzYwMC4xMzIzNjA4NDAwLjEtNzAyODgzfFBnaGd3TUZnZmtRYjlUSXBSeUNJeUVoR2ZlYyIsImlzc3VlZF9hdCI6MTMyMzYwMTk2MywidXNlcl9pZCI6IjcwMjg4MyJ9</td>
+				</tr>
+			
+		</tbody>
+	</table>
+
+
+<h4>Session Variables</h4>
+
+	<table>
+		<colgroup>
+			<col style="width:20%"/>
+			<col/>
+		</colgroup>
+		<thead>
+			<tr>
+				<th>Variable</th>
+				<th>Value</th>
+			</tr>
+		</thead>
+		<tbody>
+			
+				<tr class="pDebugOdd">
+					<td>project_id</td>
+					<td>[&#39;f45b501f-1aa6-44fe-98ba-d975ac758ebf&#39;]</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>referrer</td>
+					<td>None</td>
+				</tr>
+			
+		</tbody>
+	</table>
+
+
+<h4>GET Variables</h4>
+
+	<p>No GET data</p>
+
+
+<h4>POST Variables</h4>
+
+	<p>No POST data</p>
+
+
+<h4>Request attributes</h4>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Attribute</th>
+				<th>Value</th>
+			</tr>
+		</thead>
+		<tbody>
+			
+				<tr class="pDebugOdd">
+					<td>context</td>
+					<td>&lt;totter.models.Project object at 0x7fae081357d0&gt;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>debug_toolbar</td>
+					<td>&lt;pyramid_debugtoolbar.toolbar.DebugToolbar object at 0x7fae0c084450&gt;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>exc_history</td>
+					<td>&lt;pyramid_debugtoolbar.toolbar.ExceptionHistory object at 0x2937bd0&gt;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>locale_name</td>
+					<td>&#39;en&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>pdtb_sqla_queries</td>
+					<td>[{&#39;duration&#39;: 0.00048422813415527344, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae08135650&gt;, &#39;parameters&#39;: (&#39;cologne&#39;,), &#39;statement&#39;: &#39;SELECT `Projects`.`ProjectUUID` AS `Projects_ProjectUUID`, `Projects`.`ProjectDescription` AS `Projects_ProjectDescription`, `Projects`.`URLName` AS `Projects_URLName`, `Projects`.`ProjectTitle` AS `Projects_ProjectTitle`, `Projects`.`ProjectKey` AS `Projects_ProjectKey`, `Projects`.`CreatorUUID` AS `Projects_CreatorUUID`, `Projects`.`CreationTime` AS `Projects_CreationTime`, `Projects`.`Deadline` AS `Projects_Deadline`, `Projects`.`Anonymous` AS `Projects_Anonymous`, `Projects`.`RatingType` AS `Projects_RatingType` \nFROM `Projects` \nWHERE `Projects`.`URLName` = %s&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00026988983154296875, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae00130dd0&gt;, &#39;parameters&#39;: (&#39;d71f2c357502403289ebc7315ff9b25e&#39;,), &#39;statement&#39;: &#39;SELECT `Users`.`UserUUID` AS `Users_UserUUID`, `Users`.`Email` AS `Users_Email`, `Users`.`FirstName` AS `Users_FirstName`, `Users`.`LastName` AS `Users_LastName`, `Users`.`ProfilePicture` AS `Users_ProfilePicture`, `Users`.`FacebookID` AS `Users_FacebookID`, `Users`.`RegistrationDate` AS `Users_RegistrationDate`, `Users`.`LastLogin` AS `Users_LastLogin`, `Users`.`SaltedPasswordHash` AS `Users_SaltedPasswordHash`, `Users`.`Salt` AS `Users_Salt` \nFROM `Users` \nWHERE `Users`.`UserUUID` = %s&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00042486190795898438, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae00137510&gt;, &#39;parameters&#39;: (&#39;veesh%40alum.mit.edu&#39;,), &#39;statement&#39;: &#39;SELECT `Projects`.`ProjectUUID` AS `Projects_ProjectUUID`, `Projects`.`ProjectDescription` AS `Projects_ProjectDescription`, `Projects`.`URLName` AS `Projects_URLName`, `Projects`.`ProjectTitle` AS `Projects_ProjectTitle`, `Projects`.`ProjectKey` AS `Projects_ProjectKey`, `Projects`.`CreatorUUID` AS `Projects_CreatorUUID`, `Projects`.`CreationTime` AS `Projects_CreationTime`, `Projects`.`Deadline` AS `Projects_Deadline`, `Projects`.`Anonymous` AS `Projects_Anonymous`, `Projects`.`RatingType` AS `Projects_RatingType` \nFROM `Projects`, `Participants` \nWHERE %s = `Participants`.`UserEmail` AND `Projects`.`ProjectUUID` = `Participants`.`ProjectUUID`&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00032496452331542969, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae0816f5d0&gt;, &#39;parameters&#39;: (&#39;d71f2c357502403289ebc7315ff9b25e&#39;,), &#39;statement&#39;: &#39;SELECT `Users`.`UserUUID` AS `Users_UserUUID`, `Users`.`Email` AS `Users_Email`, `Users`.`FirstName` AS `Users_FirstName`, `Users`.`LastName` AS `Users_LastName`, `Users`.`ProfilePicture` AS `Users_ProfilePicture`, `Users`.`FacebookID` AS `Users_FacebookID`, `Users`.`RegistrationDate` AS `Users_RegistrationDate`, `Users`.`LastLogin` AS `Users_LastLogin`, `Users`.`SaltedPasswordHash` AS `Users_SaltedPasswordHash`, `Users`.`Salt` AS `Users_Salt` \nFROM `Users` \nWHERE `Users`.`UserUUID` = %s&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00034999847412109375, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fadfc0e62d0&gt;, &#39;parameters&#39;: (&#39;veesh%40alum.mit.edu&#39;,), &#39;statement&#39;: &#39;SELECT `Projects`.`ProjectUUID` AS `Projects_ProjectUUID`, `Projects`.`ProjectDescription` AS `Projects_ProjectDescription`, `Projects`.`URLName` AS `Projects_URLName`, `Projects`.`ProjectTitle` AS `Projects_ProjectTitle`, `Projects`.`ProjectKey` AS `Projects_ProjectKey`, `Projects`.`CreatorUUID` AS `Projects_CreatorUUID`, `Projects`.`CreationTime` AS `Projects_CreationTime`, `Projects`.`Deadline` AS `Projects_Deadline`, `Projects`.`Anonymous` AS `Projects_Anonymous`, `Projects`.`RatingType` AS `Projects_RatingType` \nFROM `Projects`, `Participants` \nWHERE %s = `Participants`.`UserEmail` AND `Projects`.`ProjectUUID` = `Participants`.`ProjectUUID`&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00031280517578125, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae00125e90&gt;, &#39;parameters&#39;: (&#39;d71f2c357502403289ebc7315ff9b25e&#39;,), &#39;statement&#39;: &#39;SELECT `Users`.`UserUUID` AS `Users_UserUUID`, `Users`.`Email` AS `Users_Email`, `Users`.`FirstName` AS `Users_FirstName`, `Users`.`LastName` AS `Users_LastName`, `Users`.`ProfilePicture` AS `Users_ProfilePicture`, `Users`.`FacebookID` AS `Users_FacebookID`, `Users`.`RegistrationDate` AS `Users_RegistrationDate`, `Users`.`LastLogin` AS `Users_LastLogin`, `Users`.`SaltedPasswordHash` AS `Users_SaltedPasswordHash`, `Users`.`Salt` AS `Users_Salt` \nFROM `Users` \nWHERE `Users`.`UserUUID` = %s&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00041604042053222656, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae0c152d50&gt;, &#39;parameters&#39;: (&#39;d71f2c357502403289ebc7315ff9b25e&#39;, &#39;f45b501f1aa644fe98bad975ac758ebf&#39;), &#39;statement&#39;: &#39;SELECT `Ideas`.`IdeaID` AS `Ideas_IdeaID`, `Ideas`.`ProjectUUID` AS `Ideas_ProjectUUID`, `Ideas`.`AuthorUUID` AS `Ideas_AuthorUUID`, `Ideas`.`CreationTime` AS `Ideas_CreationTime`, `Ideas`.`Anonymous` AS `Ideas_Anonymous`, `Ideas`.`IdeaData` AS `Ideas_IdeaData`, `AggregateRatings`.`IdeaID` AS `AggregateRatings_IdeaID`, `AggregateRatings`.`Liked` AS `AggregateRatings_Liked`, `AggregateRatings`.`Loved` AS `AggregateRatings_Loved`, `AggregateRatings`.`Stars` AS `AggregateRatings_Stars`, `AggregateRatings`.`Count` AS `AggregateRatings_Count`, `UserRatings`.`IdeaID` AS `UserRatings_IdeaID`, `UserRatings`.`UserUUID` AS `UserRatings_UserUUID`, `UserRatings`.`Type` AS `UserRatings_Type`, `UserRatings`.`Liked` AS `UserRatings_Liked`, `UserRatings`.`Loved` AS `UserRatings_Loved`, `UserRatings`.`Stars` AS `UserRatings_Stars`, `UserRatings`.`LastModified` AS `UserRatings_LastModified`, `UserRatings`.`CreationTime` AS `UserRatings_CreationTime` \nFROM `Ideas` LEFT OUTER JOIN `AggregateRatings` ON `AggregateRatings`.`IdeaID` = `Ideas`.`IdeaID` LEFT OUTER JOIN `UserRatings` ON `Ideas`.`IdeaID` = `UserRatings`.`IdeaID` AND `UserRatings`.`UserUUID` = %s INNER JOIN `Users` ON `Ideas`.`AuthorUUID` = `Users`.`UserUUID` \nWHERE `Ideas`.`ProjectUUID` = %s&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00022602081298828125, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae0c152c50&gt;, &#39;parameters&#39;: (2L,), &#39;statement&#39;: &#39;SELECT `AggregateRatings`.`IdeaID` AS `AggregateRatings_IdeaID`, `AggregateRatings`.`Liked` AS `AggregateRatings_Liked`, `AggregateRatings`.`Loved` AS `AggregateRatings_Loved`, `AggregateRatings`.`Stars` AS `AggregateRatings_Stars`, `AggregateRatings`.`Count` AS `AggregateRatings_Count` \nFROM `AggregateRatings` \nWHERE `AggregateRatings`.`IdeaID` = %s&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00024294853210449219, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae0c152110&gt;, &#39;parameters&#39;: (2L,), &#39;statement&#39;: &#39;SELECT `Comments`.`CommentID` AS `Comments_CommentID`, `Comments`.`IdeaID` AS `Comments_IdeaID`, `Comments`.`ProjectUUID` AS `Comments_ProjectUUID`, `Comments`.`AuthorUUID` AS `Comments_AuthorUUID`, `Comments`.`CreationTime` AS `Comments_CreationTime`, `Comments`.`Anonymous` AS `Comments_Anonymous`, `Comments`.`CommentData` AS `Comments_CommentData` \nFROM `Comments` \nWHERE %s = `Comments`.`IdeaID`&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00024580955505371094, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fadfc0ca4d0&gt;, &#39;parameters&#39;: (&#39;c14de178fc464308a8f572bc2e90a6d9&#39;,), &#39;statement&#39;: &#39;SELECT `Users`.`UserUUID` AS `Users_UserUUID`, `Users`.`Email` AS `Users_Email`, `Users`.`FirstName` AS `Users_FirstName`, `Users`.`LastName` AS `Users_LastName`, `Users`.`ProfilePicture` AS `Users_ProfilePicture`, `Users`.`FacebookID` AS `Users_FacebookID`, `Users`.`RegistrationDate` AS `Users_RegistrationDate`, `Users`.`LastLogin` AS `Users_LastLogin`, `Users`.`SaltedPasswordHash` AS `Users_SaltedPasswordHash`, `Users`.`Salt` AS `Users_Salt` \nFROM `Users` \nWHERE `Users`.`UserUUID` = %s&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00021791458129882812, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae0c15f190&gt;, &#39;parameters&#39;: (&#39;d71f2c357502403289ebc7315ff9b25e&#39;,), &#39;statement&#39;: &#39;SELECT `Users`.`UserUUID` AS `Users_UserUUID`, `Users`.`Email` AS `Users_Email`, `Users`.`FirstName` AS `Users_FirstName`, `Users`.`LastName` AS `Users_LastName`, `Users`.`ProfilePicture` AS `Users_ProfilePicture`, `Users`.`FacebookID` AS `Users_FacebookID`, `Users`.`RegistrationDate` AS `Users_RegistrationDate`, `Users`.`LastLogin` AS `Users_LastLogin`, `Users`.`SaltedPasswordHash` AS `Users_SaltedPasswordHash`, `Users`.`Salt` AS `Users_Salt` \nFROM `Users` \nWHERE `Users`.`UserUUID` = %s&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00036692619323730469, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae0011e0d0&gt;, &#39;parameters&#39;: (&#39;veesh%40alum.mit.edu&#39;,), &#39;statement&#39;: &#39;SELECT `Projects`.`ProjectUUID` AS `Projects_ProjectUUID`, `Projects`.`ProjectDescription` AS `Projects_ProjectDescription`, `Projects`.`URLName` AS `Projects_URLName`, `Projects`.`ProjectTitle` AS `Projects_ProjectTitle`, `Projects`.`ProjectKey` AS `Projects_ProjectKey`, `Projects`.`CreatorUUID` AS `Projects_CreatorUUID`, `Projects`.`CreationTime` AS `Projects_CreationTime`, `Projects`.`Deadline` AS `Projects_Deadline`, `Projects`.`Anonymous` AS `Projects_Anonymous`, `Projects`.`RatingType` AS `Projects_RatingType` \nFROM `Projects`, `Participants` \nWHERE %s = `Participants`.`UserEmail` AND `Projects`.`ProjectUUID` = `Participants`.`ProjectUUID`&#39;, &#39;engine_id&#39;: 38633872}, {&#39;duration&#39;: 0.00053095817565917969, &#39;context&#39;: &lt;sqlalchemy.dialects.mysql.mysqldb.MySQLExecutionContext_mysqldb object at 0x7fae08180290&gt;, &#39;parameters&#39;: (&#39;d71f2c357502403289ebc7315ff9b25e&#39;,), &#39;statement&#39;: &#39;SELECT `Users`.`UserUUID` AS `Users_UserUUID`, `Users`.`Email` AS `Users_Email`, `Users`.`FirstName` AS `Users_FirstName`, `Users`.`LastName` AS `Users_LastName`, `Users`.`ProfilePicture` AS `Users_ProfilePicture`, `Users`.`FacebookID` AS `Users_FacebookID`, `Users`.`RegistrationDate` AS `Users_RegistrationDate`, `Users`.`LastLogin` AS `Users_LastLogin`, `Users`.`SaltedPasswordHash` AS `Users_SaltedPasswordHash`, `Users`.`Salt` AS `Users_Salt` \nFROM `Users` \nWHERE `Users`.`UserUUID` = %s&#39;, &#39;engine_id&#39;: 38633872}]</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>registry</td>
+					<td>&lt;Registry totter&gt;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>request_iface</td>
+					<td>&lt;InterfaceClass pyramid.interfaces.IRequest&gt;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>response</td>
+					<td>&#39;&lt;Response at 0x7fae0c152390 200 OK&gt;&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>root</td>
+					<td>{&#39;project&#39;: &lt;totter.models.ProjectLongname instance at 0x7fadfc0d26c8&gt;, &#39;p&#39;: &lt;totter.models.ProjectShortname instance at 0x7fadfc0d2518&gt;, &#39;user&#39;: &lt;totter.models.UserContainer object at 0x7fae00125710&gt;}</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>subpath</td>
+					<td>()</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>traversed</td>
+					<td>(u&#39;p&#39;, u&#39;cologne&#39;)</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>view_name</td>
+					<td>u&#39;ideas&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>virtual_root</td>
+					<td>{&#39;project&#39;: &lt;totter.models.ProjectLongname instance at 0x7fadfc0d26c8&gt;, &#39;p&#39;: &lt;totter.models.ProjectShortname instance at 0x7fadfc0d2518&gt;, &#39;user&#39;: &lt;totter.models.UserContainer object at 0x7fae00125710&gt;}</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>virtual_root_path</td>
+					<td>()</td>
+				</tr>
+			
+		</tbody>
+	</table>
+
+
+<h4>Request environ</h4>
+
+	<table>
+		<thead>
+			<tr>
+				<th>Attribute</th>
+				<th>Value</th>
+			</tr>
+		</thead>
+		<tbody>
+			
+				<tr class="pDebugOdd">
+					<td>AUTH_TYPE</td>
+					<td>&#39;cookie&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>DOCUMENT_ROOT</td>
+					<td>&#39;/var/www/totter/totter/&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>GATEWAY_INTERFACE</td>
+					<td>&#39;CGI/1.1&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>HTTP_ACCEPT</td>
+					<td>&#39;text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>HTTP_ACCEPT_ENCODING</td>
+					<td>&#39;gzip, deflate&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>HTTP_ACCEPT_LANGUAGE</td>
+					<td>&#39;en-us&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>HTTP_CONNECTION</td>
+					<td>&#39;keep-alive&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>HTTP_COOKIE</td>
+					<td>&#39;auth_tkt=&#34;21194515c9fee126ea354c05a225fc694ee49000ZDcxZjJjMzUtNzUwMi00MDMyLTg5ZWItYzczMTVmZjliMjVl!userid_type:b64str&#34;; fc=fcVal=1565896304291054208; session=e31502cab2927ae79428b3a90cb85739fdd830adgAJK3x7lTkdB07jyjXdgJH1xAShVCHJlZmVycmVycQJOVQpwcm9qZWN0X2lkcQNdcQRVJGY0NWI1MDFmLTFhYTYtNDRmZS05OGJhLWQ5NzVhYzc1OGViZnEFYXWHcQYu; fbsr_252211568169520=adxGRHaZlgEiP3wFk-8HHVp7_MuHnXTZ20B6XgIbr6M.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsImNvZGUiOiIyLkFRQmVlLU4wcTFySGI1MnAuMzYwMC4xMzIzNjA4NDAwLjEtNzAyODgzfFBnaGd3TUZnZmtRYjlUSXBSeUNJeUVoR2ZlYyIsImlzc3VlZF9hdCI6MTMyMzYwMTk2MywidXNlcl9pZCI6IjcwMjg4MyJ9; auth_tkt=&#34;21194515c9fee126ea354c05a225fc694ee49000ZDcxZjJjMzUtNzUwMi00MDMyLTg5ZWItYzczMTVmZjliMjVl!userid_type:b64str&#34;&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>HTTP_HOST</td>
+					<td>&#39;letstotter.com&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>HTTP_REFERER</td>
+					<td>&#39;http://letstotter.com/p/cologne/&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>HTTP_USER_AGENT</td>
+					<td>&#39;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2) AppleWebKit/534.51.22 (KHTML, like Gecko) Version/5.1.1 Safari/534.51.22&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>PATH_INFO</td>
+					<td>&#39;/p/cologne/ideas&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>PATH_TRANSLATED</td>
+					<td>&#39;/var/www/totter/totter//p/cologne/ideas&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>QUERY_STRING</td>
+					<td>&#39;&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>REDIRECT_STATUS</td>
+					<td>&#39;200&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>REMOTE_ADDR</td>
+					<td>&#39;108.16.117.144&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>REMOTE_PORT</td>
+					<td>&#39;63368&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>REMOTE_USER_DATA</td>
+					<td>u&#39;userid_type:b64str&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>REMOTE_USER_TOKENS</td>
+					<td>[&#39;&#39;]</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>REQUEST_METHOD</td>
+					<td>&#39;GET&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>REQUEST_URI</td>
+					<td>&#39;/p/cologne/ideas&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>SCRIPT_FILENAME</td>
+					<td>&#39;/var/www/totter/totter/&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>SCRIPT_NAME</td>
+					<td>&#39;&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>SERVER_ADDR</td>
+					<td>&#39;10.245.79.52&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>SERVER_NAME</td>
+					<td>&#39;letstotter.com&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>SERVER_PORT</td>
+					<td>&#39;80&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>SERVER_PROTOCOL</td>
+					<td>&#39;HTTP/1.1&#39;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>SERVER_SOFTWARE</td>
+					<td>&#39;lighttpd/1.4.29&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>webob._parsed_cookies</td>
+					<td>({u&#39;session&#39;: u&#39;e31502cab2927ae79428b3a90cb85739fdd830adgAJK3x7lTkdB07jyjXdgJH1xAShVCHJlZmVycmVycQJOVQpwcm9qZWN0X2lkcQNdcQRVJGY0NWI1MDFmLTFhYTYtNDRmZS05OGJhLWQ5NzVhYzc1OGViZnEFYXWHcQYu&#39;, u&#39;fc&#39;: u&#39;fcVal=1565896304291054208&#39;, u&#39;auth_tkt&#39;: u&#39;21194515c9fee126ea354c05a225fc694ee49000ZDcxZjJjMzUtNzUwMi00MDMyLTg5ZWItYzczMTVmZjliMjVl!userid_type:b64str&#39;, u&#39;fbsr_252211568169520&#39;: u&#39;adxGRHaZlgEiP3wFk-8HHVp7_MuHnXTZ20B6XgIbr6M.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsImNvZGUiOiIyLkFRQmVlLU4wcTFySGI1MnAuMzYwMC4xMzIzNjA4NDAwLjEtNzAyODgzfFBnaGd3TUZnZmtRYjlUSXBSeUNJeUVoR2ZlYyIsImlzc3VlZF9hdCI6MTMyMzYwMTk2MywidXNlcl9pZCI6IjcwMjg4MyJ9&#39;}, &#39;auth_tkt=&#34;21194515c9fee126ea354c05a225fc694ee49000ZDcxZjJjMzUtNzUwMi00MDMyLTg5ZWItYzczMTVmZjliMjVl!userid_type:b64str&#34;; fc=fcVal=1565896304291054208; session=e31502cab2927ae79428b3a90cb85739fdd830adgAJK3x7lTkdB07jyjXdgJH1xAShVCHJlZmVycmVycQJOVQpwcm9qZWN0X2lkcQNdcQRVJGY0NWI1MDFmLTFhYTYtNDRmZS05OGJhLWQ5NzVhYzc1OGViZnEFYXWHcQYu; fbsr_252211568169520=adxGRHaZlgEiP3wFk-8HHVp7_MuHnXTZ20B6XgIbr6M.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsImNvZGUiOiIyLkFRQmVlLU4wcTFySGI1MnAuMzYwMC4xMzIzNjA4NDAwLjEtNzAyODgzfFBnaGd3TUZnZmtRYjlUSXBSeUNJeUVoR2ZlYyIsImlzc3VlZF9hdCI6MTMyMzYwMTk2MywidXNlcl9pZCI6IjcwMjg4MyJ9; auth_tkt=&#34;21194515c9fee126ea354c05a225fc694ee49000ZDcxZjJjMzUtNzUwMi00MDMyLTg5ZWItYzczMTVmZjliMjVl!userid_type:b64str&#34;&#39;)</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>webob._parsed_query_vars</td>
+					<td>(GET([]), &#39;&#39;)</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>wsgi.errors</td>
+					<td>&lt;flup.server.fcgi_base.TeeOutputStream object at 0x7fae0c084490&gt;</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>wsgi.input</td>
+					<td>&lt;flup.server.fcgi_base.InputStream object at 0x7fae0012f410&gt;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>wsgi.multiprocess</td>
+					<td>False</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>wsgi.multithread</td>
+					<td>True</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>wsgi.run_once</td>
+					<td>False</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>wsgi.url_scheme</td>
+					<td>&#39;http&#39;</td>
+				</tr>
+			
+				<tr class="pDebugOdd">
+					<td>wsgi.version</td>
+					<td>(1, 0)</td>
+				</tr>
+			
+		</tbody>
+	</table>
+
+				    </div>
+				</div>
+			</div>
+		
+	
+		
+			<div id="pDebugTemplatePanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>Renderings</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        
+
+<table>
+	<thead>
+		<tr>
+			<th colspan="2">Renderer Name</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr class="pDebugOdd">
+			<td colspan="2">ideas.jinja2</td>
+		</tr>
+	</tbody>
+	<thead>
+		<tr>
+			<th colspan="2">Rendering Value</th>
+		</tr>
+	</thead>
+	<tbody>	
+		<tr class="pDebugOdd">
+			<td colspan="2">{&#39;project&#39;: &lt;totter.models.Project object at 0x7fae081357d0&gt;, &#39;sort&#39;: &#39;rating&#39;, &#39;idea_data&#39;: [{&#39;user_rating&#39;: {&#39;loved&#39;: False, &#39;liked&#39;: False, &#39;stars&#39;: False}, &#39;rating_count&#39;: 0, &#39;total_rating&#39;: 0, &#39;anonymous&#39;: True, &#39;author&#39;: None, &#39;total_stars&#39;: 0, &#39;data&#39;: u&#39;A cologne called &#34;anonymous&#34;, like me!&#39;, &#39;id&#39;: &#39;2&#39;, &#39;comments&#39;: [{&#39;created&#39;: &#39;December 11 at 04:01 PM EST&#39;, &#39;data&#39;: u&#39;Or a similar theme, maybe &#34;incognito&#34;&#39;, &#39;id&#39;: &#39;2&#39;, &#39;anonymous&#39;: False, &#39;author&#39;: {&#39;first_name&#39;: u&#39;Vishal&#39;, &#39;last_name&#39;: u&#39;Jain&#39;, &#39;id&#39;: &#39;d71f2c35-7502-4032-89eb-c7315ff9b25e&#39;, &#39;profile_picture&#39;: u&#39;http://graph.facebook.com/702883/picture&#39;, &#39;profile_url&#39;: &#39;http://letstotter.com/user/d71f2c35-7502-4032-89eb-c7315ff9b25e/&#39;}}, {&#39;created&#39;: &#39;December 11 at 04:01 PM EST&#39;, &#39;data&#39;: u&#39;oops, meant to post that anonymously!&#39;, &#39;id&#39;: &#39;3&#39;, &#39;anonymous&#39;: True, &#39;author&#39;: None}], &#39;created&#39;: &#39;December 11 at 04:00 PM EST&#39;}], &#39;people_count&#39;: 1, &#39;creator&#39;: {&#39;first_name&#39;: u&#39;Jim&#39;, &#39;last_name&#39;: u&#39;Wagner&#39;, &#39;id&#39;: &#39;c14de178-fc46-4308-a8f5-72bc2e90a6d9&#39;, &#39;profile_picture&#39;: u&#39;http://graph.facebook.com/703905/picture&#39;, &#39;profile_url&#39;: &#39;http://letstotter.com/user/c14de178-fc46-4308-a8f5-72bc2e90a6d9/&#39;}, &#39;show_invite&#39;: &lt;ACLDenied instance at 140385234735256 with msg &#34;ACLDenied permission &#39;invite&#39; via ACE &#39;&lt;default deny&gt;&#39; in ACL [(&#39;Allow&#39;, &#39;system.Everyone&#39;, &#39;view&#39;), (&#39;Allow&#39;, &#39;group:users&#39;, &#39;create&#39;), (&#39;Allow&#39;, &#39;group:users&#39;, &#39;post&#39;)] on context &lt;totter.models.Project object at 0x7fae081357d0&gt; for principals [&#39;system.Everyone&#39;, &#39;system.Authenticated&#39;, &#39;d71f2c35-7502-4032-89eb-c7315ff9b25e&#39;, &#39;group:users&#39;, &#39;group:rw-044ce20a-1ef4-4584-be8e-7b9fad24179b&#39;, &#39;group:rw-19267393-20e5-4c67-bcc8-c621f0de1f6e&#39;, &#39;group:rw-42dcf842-58ad-4282-b3c8-d328c8fd220d&#39;, &#39;group:rw-f45b501f-1aa6-44fe-98ba-d975ac758ebf&#39;, &#39;group:rw-9d11aa4d-cf59-4840-b98e-1347e8681131&#39;]&#34;&gt;, &#39;project_id&#39;: UUID(&#39;f45b501f-1aa6-44fe-98ba-d975ac758ebf&#39;), &#39;editable&#39;: &lt;ACLDenied instance at 140385234812080 with msg &#34;ACLDenied permission &#39;edit&#39; via ACE &#39;&lt;default deny&gt;&#39; in ACL [(&#39;Allow&#39;, &#39;system.Everyone&#39;, &#39;view&#39;), (&#39;Allow&#39;, &#39;group:users&#39;, &#39;create&#39;), (&#39;Allow&#39;, &#39;group:users&#39;, &#39;post&#39;)] on context &lt;totter.models.Project object at 0x7fae081357d0&gt; for principals [&#39;system.Everyone&#39;, &#39;system.Authenticated&#39;, &#39;d71f2c35-7502-4032-89eb-c7315ff9b25e&#39;, &#39;group:users&#39;, &#39;group:rw-044ce20a-1ef4-4584-be8e-7b9fad24179b&#39;, &#39;group:rw-19267393-20e5-4c67-bcc8-c621f0de1f6e&#39;, &#39;group:rw-42dcf842-58ad-4282-b3c8-d328c8fd220d&#39;, &#39;group:rw-f45b501f-1aa6-44fe-98ba-d975ac758ebf&#39;, &#39;group:rw-9d11aa4d-cf59-4840-b98e-1347e8681131&#39;]&#34;&gt;, &#39;ideas_count&#39;: 1, &#39;user&#39;: {&#39;first_name&#39;: u&#39;Vishal&#39;, &#39;last_name&#39;: u&#39;Jain&#39;, &#39;id&#39;: &#39;d71f2c35-7502-4032-89eb-c7315ff9b25e&#39;, &#39;profile_picture&#39;: u&#39;http://graph.facebook.com/702883/picture&#39;, &#39;profile_url&#39;: &#39;http://letstotter.com/user/d71f2c35-7502-4032-89eb-c7315ff9b25e/&#39;}}</td>
+		</tr>
+	</tbody>
+	<thead>
+		<tr>
+			<th colspan="2">System Values</th>
+		</tr>
+	</thead>
+	<tbody>	
+		
+		<tr class="pDebugOdd">
+			<td>context</td>
+			<td>&lt;totter.models.Project object at 0x7fae081357d0&gt;</td>
+		</tr>
+		
+		<tr class="pDebugEven">
+			<td>renderer_info</td>
+			<td>&lt;pyramid.renderers.RendererHelper object at 0x2a6c710&gt;</td>
+		</tr>
+		
+		<tr class="pDebugOdd">
+			<td>renderer_name</td>
+			<td>&#39;ideas.jinja2&#39;</td>
+		</tr>
+		
+		<tr class="pDebugEven">
+			<td>request</td>
+			<td>&lt;Request at 0x7fae0c0841d0 GET http://letstotter.com/p/cologne/ideas&gt;</td>
+		</tr>
+		
+		<tr class="pDebugOdd">
+			<td>view</td>
+			<td>&lt;function ideas at 0x2a5fc80&gt;</td>
+		</tr>
+		
+	</tbody>
+</table>
+
+
+
+
+				    </div>
+				</div>
+			</div>
+		
+	
+		
+			<div id="pDebugLoggingPanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>Log Messages</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        
+	<table>
+		<thead>
+			<tr>
+				<th>Level</th>
+				<th>Time</th>
+				<th>Message</th>
+				<th>Location</th>
+			</tr>
+		</thead>
+		<tbody>
+			
+				<tr class="pDebugOdd">
+					<td>INFO</td>
+					<td>2011-12-11 21:21:37.755996</td>
+					<td>ProjectContainer key: cologne</td>
+					<td title="/var/www/totter/totter/models.py:290">&lt;totter/models.py&gt;:290</td>
+				</tr>
+			
+				<tr class="pDebugEven">
+					<td>INFO</td>
+					<td>2011-12-11 21:21:37.756184</td>
+					<td>ProjectContainer key type: &lt;type &#39;unicode&#39;&gt;</td>
+					<td title="/var/www/totter/totter/models.py:291">&lt;totter/models.py&gt;:291</td>
+				</tr>
+			
+		</tbody>
+	</table>
+
+
+
+				    </div>
+				</div>
+			</div>
+		
+	
+		
+			<div id="pDebugPerformancePanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>Performance</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        
+<table>
+	<colgroup>
+		<col style="width:20%"/>
+		<col/>
+	</colgroup>
+	<thead>
+		<tr>
+			<th>Resource</th>
+			<th>Value</th>
+		</tr>
+	</thead>
+	<tbody>
+		
+			<tr class="pDebugOdd">
+				<td>User CPU time</td>
+				<td>25.996 msec</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>System CPU time</td>
+				<td>0.000 msec</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>Total CPU time</td>
+				<td>25.996 msec</td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>Elapsed time</td>
+				<td>29.321 msec</td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>Context switches</td>
+				<td>0 voluntary, 30 involuntary</td>
+			</tr>
+		
+	</tbody>
+</table>
+
+
+<h4>Profile</h4>
+
+    <p>The profiler is not activated. Activate the checkbox in the toolbar to use it.</p>
+
+
+				    </div>
+				</div>
+			</div>
+		
+	
+		
+			<div id="pDebugRoutesPanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>Routes</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        <table>
+	<thead>
+		<tr>
+			<th>Route Name</th>
+			<th>Route Pattern</th>
+			<th>View Callable</th>
+			<th>Predicates</th>
+		</tr>
+	</thead>
+	<tbody>
+		
+			<tr class="pDebugOdd">
+				<td>___debug_toolbar/static/</td>
+				<td>_debug_toolbar/static/*subpath</td>
+				<td>&lt;function &lt;pyramid.static.static_view object at 0x29b3e90&gt; at 0x2b6f668&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>debugtoolbar.source</td>
+				<td>/_debug_toolbar/source</td>
+				<td>&lt;function ExceptionDebugView at 0x2b6fed8&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>debugtoolbar.execute</td>
+				<td>/_debug_toolbar/execute</td>
+				<td>&lt;function ExceptionDebugView at 0x2aaf050&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>debugtoolbar.console</td>
+				<td>/_debug_toolbar/console</td>
+				<td>&lt;function ExceptionDebugView at 0x2aaf140&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>debugtoolbar.exception</td>
+				<td>/_debug_toolbar/exception</td>
+				<td>&lt;function ExceptionDebugView at 0x2b6fde8&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>debugtoolbar.sql_select</td>
+				<td>/_debug_toolbar/sqlalchemy/sql_select</td>
+				<td>&lt;function SQLAlchemyViews at 0x2aaf230&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>debugtoolbar.sql_explain</td>
+				<td>/_debug_toolbar/sqlalchemy/sql_explain</td>
+				<td>&lt;function SQLAlchemyViews at 0x2aaf320&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>__static/</td>
+				<td>static/*subpath</td>
+				<td>&lt;function &lt;pyramid.static.static_view object at 0x269b450&gt; at 0x2aaf488&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>home</td>
+				<td>/</td>
+				<td>&lt;function landing at 0x2ab67d0&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>dashboard</td>
+				<td>/dashboard</td>
+				<td>&lt;function show_dashboard at 0x2ab6cf8&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>access_project</td>
+				<td>/access/{project_id}</td>
+				<td>&lt;function project_access at 0x2ab69b0&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>fb_redirect</td>
+				<td>/fbredir</td>
+				<td>&lt;function fb_redirect at 0x2ab65f0&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>login</td>
+				<td>/login</td>
+				<td>&lt;function login at 0x2ab68c0&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>facebook</td>
+				<td>/facebook</td>
+				<td>&lt;function facebook at 0x2ab85f0&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>fb</td>
+				<td>/fb</td>
+				<td>&lt;function facebook2 at 0x2aaf758&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>fbtest</td>
+				<td>/fbtest</td>
+				<td>&lt;function fbtest at 0x2aaf848&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>logout</td>
+				<td>/logout</td>
+				<td>&lt;function logout at 0x2ab89b0&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugEven">
+				<td>register</td>
+				<td>/register</td>
+				<td>&lt;function register at 0x2ab8c80&gt;</td>
+				<td></td>
+			</tr>
+		
+			<tr class="pDebugOdd">
+				<td>stars</td>
+				<td>/project/{project_id}/stars</td>
+				<td>&lt;function stars at 0x2ab8e60&gt;</td>
+				<td></td>
+			</tr>
+		
+	</tbody>
+</table>
+				    </div>
+				</div>
+			</div>
+		
+	
+		
+			<div id="pDebugSQLAlchemyPanel-content" class="panelContent">
+				<div class="pDebugPanelTitle">
+					<a href="" class="pDebugClose">Close</a>
+					<h3>SQLAlchemy queries</h3>
+				</div>
+				<div class="pDebugPanelContent">
+				    <div class="scroll">
+				        <table id="pSqlaTable">
+	<thead>
+		<tr>
+			<th>Time&nbsp;(ms)</th>
+			<th>Action</th>
+			<th>Query</th>
+			<th>Params</th>
+		</tr>
+	</thead>
+	<tbody>
+	
+		<tr class="pDebugOdd">
+			<td>0.0005</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Projects%60.%60ProjectUUID%60%20AS%20%60Projects_ProjectUUID%60%2C%20%60Projects%60.%60ProjectDescription%60%20AS%20%60Projects_ProjectDescription%60%2C%20%60Projects%60.%60URLName%60%20AS%20%60Projects_URLName%60%2C%20%60Projects%60.%60ProjectTitle%60%20AS%20%60Projects_ProjectTitle%60%2C%20%60Projects%60.%60ProjectKey%60%20AS%20%60Projects_ProjectKey%60%2C%20%60Projects%60.%60CreatorUUID%60%20AS%20%60Projects_CreatorUUID%60%2C%20%60Projects%60.%60CreationTime%60%20AS%20%60Projects_CreationTime%60%2C%20%60Projects%60.%60Deadline%60%20AS%20%60Projects_Deadline%60%2C%20%60Projects%60.%60Anonymous%60%20AS%20%60Projects_Anonymous%60%2C%20%60Projects%60.%60RatingType%60%20AS%20%60Projects_RatingType%60%20%0AFROM%20%60Projects%60%20%0AWHERE%20%60Projects%60.%60URLName%60%20%3D%20%25s&amp;params=%5B%22cologne%22%5D&amp;duration=0.000484228134155&amp;hash=cf1d914bebe054978382d62e739be8ec8c14a401&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Projects%60.%60ProjectUUID%60%20AS%20%60Projects_ProjectUUID%60%2C%20%60Projects%60.%60ProjectDescription%60%20AS%20%60Projects_ProjectDescription%60%2C%20%60Projects%60.%60URLName%60%20AS%20%60Projects_URLName%60%2C%20%60Projects%60.%60ProjectTitle%60%20AS%20%60Projects_ProjectTitle%60%2C%20%60Projects%60.%60ProjectKey%60%20AS%20%60Projects_ProjectKey%60%2C%20%60Projects%60.%60CreatorUUID%60%20AS%20%60Projects_CreatorUUID%60%2C%20%60Projects%60.%60CreationTime%60%20AS%20%60Projects_CreationTime%60%2C%20%60Projects%60.%60Deadline%60%20AS%20%60Projects_Deadline%60%2C%20%60Projects%60.%60Anonymous%60%20AS%20%60Projects_Anonymous%60%2C%20%60Projects%60.%60RatingType%60%20AS%20%60Projects_RatingType%60%20%0AFROM%20%60Projects%60%20%0AWHERE%20%60Projects%60.%60URLName%60%20%3D%20%25s&amp;params=%5B%22cologne%22%5D&amp;duration=0.000484228134155&amp;hash=cf1d914bebe054978382d62e739be8ec8c14a401&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectDescription<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectDescription<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>URLName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_URLName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectTitle<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectTitle<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectKey<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectKey<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreatorUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_CreatorUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreationTime<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_CreationTime<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Deadline<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_Deadline<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Anonymous<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_Anonymous<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RatingType<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_RatingType<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>URLName<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[&#34;cologne&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugEven">
+			<td>0.0003</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000269889831543&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000269889831543&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_UserUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Email<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Email<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FirstName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FirstName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProfilePicture<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_ProfilePicture<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FacebookID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FacebookID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RegistrationDate<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_RegistrationDate<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastLogin<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastLogin<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>SaltedPasswordHash<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_SaltedPasswordHash<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Salt<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Salt<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[&#34;d71f2c357502403289ebc7315ff9b25e&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugOdd">
+			<td>0.0004</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Projects%60.%60ProjectUUID%60%20AS%20%60Projects_ProjectUUID%60%2C%20%60Projects%60.%60ProjectDescription%60%20AS%20%60Projects_ProjectDescription%60%2C%20%60Projects%60.%60URLName%60%20AS%20%60Projects_URLName%60%2C%20%60Projects%60.%60ProjectTitle%60%20AS%20%60Projects_ProjectTitle%60%2C%20%60Projects%60.%60ProjectKey%60%20AS%20%60Projects_ProjectKey%60%2C%20%60Projects%60.%60CreatorUUID%60%20AS%20%60Projects_CreatorUUID%60%2C%20%60Projects%60.%60CreationTime%60%20AS%20%60Projects_CreationTime%60%2C%20%60Projects%60.%60Deadline%60%20AS%20%60Projects_Deadline%60%2C%20%60Projects%60.%60Anonymous%60%20AS%20%60Projects_Anonymous%60%2C%20%60Projects%60.%60RatingType%60%20AS%20%60Projects_RatingType%60%20%0AFROM%20%60Projects%60%2C%20%60Participants%60%20%0AWHERE%20%25s%20%3D%20%60Participants%60.%60UserEmail%60%20AND%20%60Projects%60.%60ProjectUUID%60%20%3D%20%60Participants%60.%60ProjectUUID%60&amp;params=%5B%22veesh%2540alum.mit.edu%22%5D&amp;duration=0.000424861907959&amp;hash=a9123be260879c42cb0b015962a57b7af92cff73&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Projects%60.%60ProjectUUID%60%20AS%20%60Projects_ProjectUUID%60%2C%20%60Projects%60.%60ProjectDescription%60%20AS%20%60Projects_ProjectDescription%60%2C%20%60Projects%60.%60URLName%60%20AS%20%60Projects_URLName%60%2C%20%60Projects%60.%60ProjectTitle%60%20AS%20%60Projects_ProjectTitle%60%2C%20%60Projects%60.%60ProjectKey%60%20AS%20%60Projects_ProjectKey%60%2C%20%60Projects%60.%60CreatorUUID%60%20AS%20%60Projects_CreatorUUID%60%2C%20%60Projects%60.%60CreationTime%60%20AS%20%60Projects_CreationTime%60%2C%20%60Projects%60.%60Deadline%60%20AS%20%60Projects_Deadline%60%2C%20%60Projects%60.%60Anonymous%60%20AS%20%60Projects_Anonymous%60%2C%20%60Projects%60.%60RatingType%60%20AS%20%60Projects_RatingType%60%20%0AFROM%20%60Projects%60%2C%20%60Participants%60%20%0AWHERE%20%25s%20%3D%20%60Participants%60.%60UserEmail%60%20AND%20%60Projects%60.%60ProjectUUID%60%20%3D%20%60Participants%60.%60ProjectUUID%60&amp;params=%5B%22veesh%2540alum.mit.edu%22%5D&amp;duration=0.000424861907959&amp;hash=a9123be260879c42cb0b015962a57b7af92cff73&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectDescription<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectDescription<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>URLName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_URLName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectTitle<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectTitle<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectKey<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectKey<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreatorUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_CreatorUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreationTime<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_CreationTime<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Deadline<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_Deadline<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Anonymous<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_Anonymous<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RatingType<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_RatingType<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">%</span>s <span style="color: #303030">=</span> <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserEmail<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AND</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span>
+</pre></div>
+</td>
+			<td>[&#34;veesh%40alum.mit.edu&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugEven">
+			<td>0.0003</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000324964523315&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000324964523315&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_UserUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Email<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Email<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FirstName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FirstName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProfilePicture<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_ProfilePicture<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FacebookID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FacebookID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RegistrationDate<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_RegistrationDate<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastLogin<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastLogin<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>SaltedPasswordHash<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_SaltedPasswordHash<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Salt<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Salt<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[&#34;d71f2c357502403289ebc7315ff9b25e&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugOdd">
+			<td>0.0003</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Projects%60.%60ProjectUUID%60%20AS%20%60Projects_ProjectUUID%60%2C%20%60Projects%60.%60ProjectDescription%60%20AS%20%60Projects_ProjectDescription%60%2C%20%60Projects%60.%60URLName%60%20AS%20%60Projects_URLName%60%2C%20%60Projects%60.%60ProjectTitle%60%20AS%20%60Projects_ProjectTitle%60%2C%20%60Projects%60.%60ProjectKey%60%20AS%20%60Projects_ProjectKey%60%2C%20%60Projects%60.%60CreatorUUID%60%20AS%20%60Projects_CreatorUUID%60%2C%20%60Projects%60.%60CreationTime%60%20AS%20%60Projects_CreationTime%60%2C%20%60Projects%60.%60Deadline%60%20AS%20%60Projects_Deadline%60%2C%20%60Projects%60.%60Anonymous%60%20AS%20%60Projects_Anonymous%60%2C%20%60Projects%60.%60RatingType%60%20AS%20%60Projects_RatingType%60%20%0AFROM%20%60Projects%60%2C%20%60Participants%60%20%0AWHERE%20%25s%20%3D%20%60Participants%60.%60UserEmail%60%20AND%20%60Projects%60.%60ProjectUUID%60%20%3D%20%60Participants%60.%60ProjectUUID%60&amp;params=%5B%22veesh%2540alum.mit.edu%22%5D&amp;duration=0.000349998474121&amp;hash=a9123be260879c42cb0b015962a57b7af92cff73&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Projects%60.%60ProjectUUID%60%20AS%20%60Projects_ProjectUUID%60%2C%20%60Projects%60.%60ProjectDescription%60%20AS%20%60Projects_ProjectDescription%60%2C%20%60Projects%60.%60URLName%60%20AS%20%60Projects_URLName%60%2C%20%60Projects%60.%60ProjectTitle%60%20AS%20%60Projects_ProjectTitle%60%2C%20%60Projects%60.%60ProjectKey%60%20AS%20%60Projects_ProjectKey%60%2C%20%60Projects%60.%60CreatorUUID%60%20AS%20%60Projects_CreatorUUID%60%2C%20%60Projects%60.%60CreationTime%60%20AS%20%60Projects_CreationTime%60%2C%20%60Projects%60.%60Deadline%60%20AS%20%60Projects_Deadline%60%2C%20%60Projects%60.%60Anonymous%60%20AS%20%60Projects_Anonymous%60%2C%20%60Projects%60.%60RatingType%60%20AS%20%60Projects_RatingType%60%20%0AFROM%20%60Projects%60%2C%20%60Participants%60%20%0AWHERE%20%25s%20%3D%20%60Participants%60.%60UserEmail%60%20AND%20%60Projects%60.%60ProjectUUID%60%20%3D%20%60Participants%60.%60ProjectUUID%60&amp;params=%5B%22veesh%2540alum.mit.edu%22%5D&amp;duration=0.000349998474121&amp;hash=a9123be260879c42cb0b015962a57b7af92cff73&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectDescription<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectDescription<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>URLName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_URLName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectTitle<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectTitle<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectKey<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectKey<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreatorUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_CreatorUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreationTime<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_CreationTime<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Deadline<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_Deadline<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Anonymous<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_Anonymous<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RatingType<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_RatingType<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">%</span>s <span style="color: #303030">=</span> <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserEmail<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AND</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span>
+</pre></div>
+</td>
+			<td>[&#34;veesh%40alum.mit.edu&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugEven">
+			<td>0.0003</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000312805175781&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000312805175781&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_UserUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Email<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Email<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FirstName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FirstName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProfilePicture<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_ProfilePicture<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FacebookID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FacebookID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RegistrationDate<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_RegistrationDate<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastLogin<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastLogin<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>SaltedPasswordHash<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_SaltedPasswordHash<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Salt<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Salt<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[&#34;d71f2c357502403289ebc7315ff9b25e&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugOdd">
+			<td>0.0004</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Ideas%60.%60IdeaID%60%20AS%20%60Ideas_IdeaID%60%2C%20%60Ideas%60.%60ProjectUUID%60%20AS%20%60Ideas_ProjectUUID%60%2C%20%60Ideas%60.%60AuthorUUID%60%20AS%20%60Ideas_AuthorUUID%60%2C%20%60Ideas%60.%60CreationTime%60%20AS%20%60Ideas_CreationTime%60%2C%20%60Ideas%60.%60Anonymous%60%20AS%20%60Ideas_Anonymous%60%2C%20%60Ideas%60.%60IdeaData%60%20AS%20%60Ideas_IdeaData%60%2C%20%60AggregateRatings%60.%60IdeaID%60%20AS%20%60AggregateRatings_IdeaID%60%2C%20%60AggregateRatings%60.%60Liked%60%20AS%20%60AggregateRatings_Liked%60%2C%20%60AggregateRatings%60.%60Loved%60%20AS%20%60AggregateRatings_Loved%60%2C%20%60AggregateRatings%60.%60Stars%60%20AS%20%60AggregateRatings_Stars%60%2C%20%60AggregateRatings%60.%60Count%60%20AS%20%60AggregateRatings_Count%60%2C%20%60UserRatings%60.%60IdeaID%60%20AS%20%60UserRatings_IdeaID%60%2C%20%60UserRatings%60.%60UserUUID%60%20AS%20%60UserRatings_UserUUID%60%2C%20%60UserRatings%60.%60Type%60%20AS%20%60UserRatings_Type%60%2C%20%60UserRatings%60.%60Liked%60%20AS%20%60UserRatings_Liked%60%2C%20%60UserRatings%60.%60Loved%60%20AS%20%60UserRatings_Loved%60%2C%20%60UserRatings%60.%60Stars%60%20AS%20%60UserRatings_Stars%60%2C%20%60UserRatings%60.%60LastModified%60%20AS%20%60UserRatings_LastModified%60%2C%20%60UserRatings%60.%60CreationTime%60%20AS%20%60UserRatings_CreationTime%60%20%0AFROM%20%60Ideas%60%20LEFT%20OUTER%20JOIN%20%60AggregateRatings%60%20ON%20%60AggregateRatings%60.%60IdeaID%60%20%3D%20%60Ideas%60.%60IdeaID%60%20LEFT%20OUTER%20JOIN%20%60UserRatings%60%20ON%20%60Ideas%60.%60IdeaID%60%20%3D%20%60UserRatings%60.%60IdeaID%60%20AND%20%60UserRatings%60.%60UserUUID%60%20%3D%20%25s%20INNER%20JOIN%20%60Users%60%20ON%20%60Ideas%60.%60AuthorUUID%60%20%3D%20%60Users%60.%60UserUUID%60%20%0AWHERE%20%60Ideas%60.%60ProjectUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%2C%20%22f45b501f1aa644fe98bad975ac758ebf%22%5D&amp;duration=0.000416040420532&amp;hash=59160bac601f8ec2ab879be105d53a639da2d709&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Ideas%60.%60IdeaID%60%20AS%20%60Ideas_IdeaID%60%2C%20%60Ideas%60.%60ProjectUUID%60%20AS%20%60Ideas_ProjectUUID%60%2C%20%60Ideas%60.%60AuthorUUID%60%20AS%20%60Ideas_AuthorUUID%60%2C%20%60Ideas%60.%60CreationTime%60%20AS%20%60Ideas_CreationTime%60%2C%20%60Ideas%60.%60Anonymous%60%20AS%20%60Ideas_Anonymous%60%2C%20%60Ideas%60.%60IdeaData%60%20AS%20%60Ideas_IdeaData%60%2C%20%60AggregateRatings%60.%60IdeaID%60%20AS%20%60AggregateRatings_IdeaID%60%2C%20%60AggregateRatings%60.%60Liked%60%20AS%20%60AggregateRatings_Liked%60%2C%20%60AggregateRatings%60.%60Loved%60%20AS%20%60AggregateRatings_Loved%60%2C%20%60AggregateRatings%60.%60Stars%60%20AS%20%60AggregateRatings_Stars%60%2C%20%60AggregateRatings%60.%60Count%60%20AS%20%60AggregateRatings_Count%60%2C%20%60UserRatings%60.%60IdeaID%60%20AS%20%60UserRatings_IdeaID%60%2C%20%60UserRatings%60.%60UserUUID%60%20AS%20%60UserRatings_UserUUID%60%2C%20%60UserRatings%60.%60Type%60%20AS%20%60UserRatings_Type%60%2C%20%60UserRatings%60.%60Liked%60%20AS%20%60UserRatings_Liked%60%2C%20%60UserRatings%60.%60Loved%60%20AS%20%60UserRatings_Loved%60%2C%20%60UserRatings%60.%60Stars%60%20AS%20%60UserRatings_Stars%60%2C%20%60UserRatings%60.%60LastModified%60%20AS%20%60UserRatings_LastModified%60%2C%20%60UserRatings%60.%60CreationTime%60%20AS%20%60UserRatings_CreationTime%60%20%0AFROM%20%60Ideas%60%20LEFT%20OUTER%20JOIN%20%60AggregateRatings%60%20ON%20%60AggregateRatings%60.%60IdeaID%60%20%3D%20%60Ideas%60.%60IdeaID%60%20LEFT%20OUTER%20JOIN%20%60UserRatings%60%20ON%20%60Ideas%60.%60IdeaID%60%20%3D%20%60UserRatings%60.%60IdeaID%60%20AND%20%60UserRatings%60.%60UserUUID%60%20%3D%20%25s%20INNER%20JOIN%20%60Users%60%20ON%20%60Ideas%60.%60AuthorUUID%60%20%3D%20%60Users%60.%60UserUUID%60%20%0AWHERE%20%60Ideas%60.%60ProjectUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%2C%20%22f45b501f1aa644fe98bad975ac758ebf%22%5D&amp;duration=0.000416040420532&amp;hash=59160bac601f8ec2ab879be105d53a639da2d709&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Ideas_IdeaID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Ideas_ProjectUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>AuthorUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Ideas_AuthorUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreationTime<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Ideas_CreationTime<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Anonymous<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Ideas_Anonymous<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaData<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Ideas_IdeaData<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_IdeaID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Liked<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_Liked<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Loved<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_Loved<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Stars<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_Stars<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span><span style="color: #008000; font-weight: bold">Count</span><span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_Count<span style="color: #303030">`</span>, <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>UserRatings_IdeaID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>UserRatings_UserUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span><span style="color: #008000; font-weight: bold">Type</span><span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>UserRatings_Type<span style="color: #303030">`</span>, <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Liked<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>UserRatings_Liked<span style="color: #303030">`</span>, <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Loved<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>UserRatings_Loved<span style="color: #303030">`</span>, <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Stars<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>UserRatings_Stars<span style="color: #303030">`</span>, <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastModified<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>UserRatings_LastModified<span style="color: #303030">`</span>, <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreationTime<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>UserRatings_CreationTime<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">LEFT</span> <span style="color: #008000; font-weight: bold">OUTER</span> <span style="color: #008000; font-weight: bold">JOIN</span> <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">ON</span> <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">LEFT</span> <span style="color: #008000; font-weight: bold">OUTER</span> <span style="color: #008000; font-weight: bold">JOIN</span> <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">ON</span> <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AND</span> <span style="color: #303030">`</span>UserRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s <span style="color: #008000; font-weight: bold">INNER</span> <span style="color: #008000; font-weight: bold">JOIN</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">ON</span> <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>AuthorUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>Ideas<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[&#34;d71f2c357502403289ebc7315ff9b25e&#34;, &#34;f45b501f1aa644fe98bad975ac758ebf&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugEven">
+			<td>0.0002</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60AggregateRatings%60.%60IdeaID%60%20AS%20%60AggregateRatings_IdeaID%60%2C%20%60AggregateRatings%60.%60Liked%60%20AS%20%60AggregateRatings_Liked%60%2C%20%60AggregateRatings%60.%60Loved%60%20AS%20%60AggregateRatings_Loved%60%2C%20%60AggregateRatings%60.%60Stars%60%20AS%20%60AggregateRatings_Stars%60%2C%20%60AggregateRatings%60.%60Count%60%20AS%20%60AggregateRatings_Count%60%20%0AFROM%20%60AggregateRatings%60%20%0AWHERE%20%60AggregateRatings%60.%60IdeaID%60%20%3D%20%25s&amp;params=%5B2%5D&amp;duration=0.000226020812988&amp;hash=dc192b6702e62bdb2e25a7c7a640857e7c77fd33&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60AggregateRatings%60.%60IdeaID%60%20AS%20%60AggregateRatings_IdeaID%60%2C%20%60AggregateRatings%60.%60Liked%60%20AS%20%60AggregateRatings_Liked%60%2C%20%60AggregateRatings%60.%60Loved%60%20AS%20%60AggregateRatings_Loved%60%2C%20%60AggregateRatings%60.%60Stars%60%20AS%20%60AggregateRatings_Stars%60%2C%20%60AggregateRatings%60.%60Count%60%20AS%20%60AggregateRatings_Count%60%20%0AFROM%20%60AggregateRatings%60%20%0AWHERE%20%60AggregateRatings%60.%60IdeaID%60%20%3D%20%25s&amp;params=%5B2%5D&amp;duration=0.000226020812988&amp;hash=dc192b6702e62bdb2e25a7c7a640857e7c77fd33&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_IdeaID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Liked<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_Liked<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Loved<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_Loved<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Stars<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_Stars<span style="color: #303030">`</span>, <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span><span style="color: #008000; font-weight: bold">Count</span><span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>AggregateRatings_Count<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>AggregateRatings<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[2]</td>
+		</tr>
+	
+		<tr class="pDebugOdd">
+			<td>0.0002</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Comments%60.%60CommentID%60%20AS%20%60Comments_CommentID%60%2C%20%60Comments%60.%60IdeaID%60%20AS%20%60Comments_IdeaID%60%2C%20%60Comments%60.%60ProjectUUID%60%20AS%20%60Comments_ProjectUUID%60%2C%20%60Comments%60.%60AuthorUUID%60%20AS%20%60Comments_AuthorUUID%60%2C%20%60Comments%60.%60CreationTime%60%20AS%20%60Comments_CreationTime%60%2C%20%60Comments%60.%60Anonymous%60%20AS%20%60Comments_Anonymous%60%2C%20%60Comments%60.%60CommentData%60%20AS%20%60Comments_CommentData%60%20%0AFROM%20%60Comments%60%20%0AWHERE%20%25s%20%3D%20%60Comments%60.%60IdeaID%60&amp;params=%5B2%5D&amp;duration=0.000242948532104&amp;hash=5265a8f943d81b80060850728b6599e821bc06fd&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Comments%60.%60CommentID%60%20AS%20%60Comments_CommentID%60%2C%20%60Comments%60.%60IdeaID%60%20AS%20%60Comments_IdeaID%60%2C%20%60Comments%60.%60ProjectUUID%60%20AS%20%60Comments_ProjectUUID%60%2C%20%60Comments%60.%60AuthorUUID%60%20AS%20%60Comments_AuthorUUID%60%2C%20%60Comments%60.%60CreationTime%60%20AS%20%60Comments_CreationTime%60%2C%20%60Comments%60.%60Anonymous%60%20AS%20%60Comments_Anonymous%60%2C%20%60Comments%60.%60CommentData%60%20AS%20%60Comments_CommentData%60%20%0AFROM%20%60Comments%60%20%0AWHERE%20%25s%20%3D%20%60Comments%60.%60IdeaID%60&amp;params=%5B2%5D&amp;duration=0.000242948532104&amp;hash=5265a8f943d81b80060850728b6599e821bc06fd&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CommentID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Comments_CommentID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Comments_IdeaID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Comments_ProjectUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span>.<span style="color: #303030">`</span>AuthorUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Comments_AuthorUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreationTime<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Comments_CreationTime<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Anonymous<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Comments_Anonymous<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CommentData<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Comments_CommentData<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">%</span>s <span style="color: #303030">=</span> <span style="color: #303030">`</span>Comments<span style="color: #303030">`</span>.<span style="color: #303030">`</span>IdeaID<span style="color: #303030">`</span>
+</pre></div>
+</td>
+			<td>[2]</td>
+		</tr>
+	
+		<tr class="pDebugEven">
+			<td>0.0002</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22c14de178fc464308a8f572bc2e90a6d9%22%5D&amp;duration=0.000245809555054&amp;hash=fbbf6d6a514cdea3ff985a50af892dfa20d7e656&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22c14de178fc464308a8f572bc2e90a6d9%22%5D&amp;duration=0.000245809555054&amp;hash=fbbf6d6a514cdea3ff985a50af892dfa20d7e656&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_UserUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Email<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Email<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FirstName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FirstName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProfilePicture<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_ProfilePicture<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FacebookID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FacebookID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RegistrationDate<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_RegistrationDate<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastLogin<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastLogin<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>SaltedPasswordHash<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_SaltedPasswordHash<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Salt<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Salt<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[&#34;c14de178fc464308a8f572bc2e90a6d9&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugOdd">
+			<td>0.0002</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000217914581299&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000217914581299&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_UserUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Email<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Email<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FirstName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FirstName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProfilePicture<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_ProfilePicture<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FacebookID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FacebookID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RegistrationDate<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_RegistrationDate<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastLogin<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastLogin<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>SaltedPasswordHash<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_SaltedPasswordHash<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Salt<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Salt<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[&#34;d71f2c357502403289ebc7315ff9b25e&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugEven">
+			<td>0.0004</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Projects%60.%60ProjectUUID%60%20AS%20%60Projects_ProjectUUID%60%2C%20%60Projects%60.%60ProjectDescription%60%20AS%20%60Projects_ProjectDescription%60%2C%20%60Projects%60.%60URLName%60%20AS%20%60Projects_URLName%60%2C%20%60Projects%60.%60ProjectTitle%60%20AS%20%60Projects_ProjectTitle%60%2C%20%60Projects%60.%60ProjectKey%60%20AS%20%60Projects_ProjectKey%60%2C%20%60Projects%60.%60CreatorUUID%60%20AS%20%60Projects_CreatorUUID%60%2C%20%60Projects%60.%60CreationTime%60%20AS%20%60Projects_CreationTime%60%2C%20%60Projects%60.%60Deadline%60%20AS%20%60Projects_Deadline%60%2C%20%60Projects%60.%60Anonymous%60%20AS%20%60Projects_Anonymous%60%2C%20%60Projects%60.%60RatingType%60%20AS%20%60Projects_RatingType%60%20%0AFROM%20%60Projects%60%2C%20%60Participants%60%20%0AWHERE%20%25s%20%3D%20%60Participants%60.%60UserEmail%60%20AND%20%60Projects%60.%60ProjectUUID%60%20%3D%20%60Participants%60.%60ProjectUUID%60&amp;params=%5B%22veesh%2540alum.mit.edu%22%5D&amp;duration=0.000366926193237&amp;hash=a9123be260879c42cb0b015962a57b7af92cff73&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Projects%60.%60ProjectUUID%60%20AS%20%60Projects_ProjectUUID%60%2C%20%60Projects%60.%60ProjectDescription%60%20AS%20%60Projects_ProjectDescription%60%2C%20%60Projects%60.%60URLName%60%20AS%20%60Projects_URLName%60%2C%20%60Projects%60.%60ProjectTitle%60%20AS%20%60Projects_ProjectTitle%60%2C%20%60Projects%60.%60ProjectKey%60%20AS%20%60Projects_ProjectKey%60%2C%20%60Projects%60.%60CreatorUUID%60%20AS%20%60Projects_CreatorUUID%60%2C%20%60Projects%60.%60CreationTime%60%20AS%20%60Projects_CreationTime%60%2C%20%60Projects%60.%60Deadline%60%20AS%20%60Projects_Deadline%60%2C%20%60Projects%60.%60Anonymous%60%20AS%20%60Projects_Anonymous%60%2C%20%60Projects%60.%60RatingType%60%20AS%20%60Projects_RatingType%60%20%0AFROM%20%60Projects%60%2C%20%60Participants%60%20%0AWHERE%20%25s%20%3D%20%60Participants%60.%60UserEmail%60%20AND%20%60Projects%60.%60ProjectUUID%60%20%3D%20%60Participants%60.%60ProjectUUID%60&amp;params=%5B%22veesh%2540alum.mit.edu%22%5D&amp;duration=0.000366926193237&amp;hash=a9123be260879c42cb0b015962a57b7af92cff73&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectDescription<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectDescription<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>URLName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_URLName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectTitle<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectTitle<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectKey<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_ProjectKey<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreatorUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_CreatorUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>CreationTime<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_CreationTime<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Deadline<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_Deadline<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Anonymous<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_Anonymous<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RatingType<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Projects_RatingType<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">%</span>s <span style="color: #303030">=</span> <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserEmail<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AND</span> <span style="color: #303030">`</span>Projects<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">`</span>Participants<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProjectUUID<span style="color: #303030">`</span>
+</pre></div>
+</td>
+			<td>[&#34;veesh%40alum.mit.edu&#34;]</td>
+		</tr>
+	
+		<tr class="pDebugOdd">
+			<td>0.0005</td>
+			<td>
+			
+				
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_select?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000530958175659&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">SELECT</a><br />
+				<a class="remoteCall" href="http://letstotter.com/_debug_toolbar/sqlalchemy/sql_explain?sql=SELECT%20%60Users%60.%60UserUUID%60%20AS%20%60Users_UserUUID%60%2C%20%60Users%60.%60Email%60%20AS%20%60Users_Email%60%2C%20%60Users%60.%60FirstName%60%20AS%20%60Users_FirstName%60%2C%20%60Users%60.%60LastName%60%20AS%20%60Users_LastName%60%2C%20%60Users%60.%60ProfilePicture%60%20AS%20%60Users_ProfilePicture%60%2C%20%60Users%60.%60FacebookID%60%20AS%20%60Users_FacebookID%60%2C%20%60Users%60.%60RegistrationDate%60%20AS%20%60Users_RegistrationDate%60%2C%20%60Users%60.%60LastLogin%60%20AS%20%60Users_LastLogin%60%2C%20%60Users%60.%60SaltedPasswordHash%60%20AS%20%60Users_SaltedPasswordHash%60%2C%20%60Users%60.%60Salt%60%20AS%20%60Users_Salt%60%20%0AFROM%20%60Users%60%20%0AWHERE%20%60Users%60.%60UserUUID%60%20%3D%20%25s&amp;params=%5B%22d71f2c357502403289ebc7315ff9b25e%22%5D&amp;duration=0.000530958175659&amp;hash=da8e04a099f082fa0816efd523c5bf93e4551431&amp;engine_id=38633872">EXPLAIN</a><br />
+				
+			
+			</td>
+			<td><div class="highlight"><pre><span style="color: #008000; font-weight: bold">SELECT</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_UserUUID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Email<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Email<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FirstName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FirstName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastName<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastName<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>ProfilePicture<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_ProfilePicture<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>FacebookID<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_FacebookID<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>RegistrationDate<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_RegistrationDate<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>LastLogin<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_LastLogin<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>SaltedPasswordHash<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_SaltedPasswordHash<span style="color: #303030">`</span>, <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>Salt<span style="color: #303030">`</span> <span style="color: #008000; font-weight: bold">AS</span> <span style="color: #303030">`</span>Users_Salt<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">FROM</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span> 
+<span style="color: #008000; font-weight: bold">WHERE</span> <span style="color: #303030">`</span>Users<span style="color: #303030">`</span>.<span style="color: #303030">`</span>UserUUID<span style="color: #303030">`</span> <span style="color: #303030">=</span> <span style="color: #303030">%</span>s
+</pre></div>
+</td>
+			<td>[&#34;d71f2c357502403289ebc7315ff9b25e&#34;]</td>
+		</tr>
+	
+	</tbody>
+</table>
+
+				    </div>
+				</div>
+			</div>
+		
+	
+    <div id="pDebugWindow" class="panelContent"></div>
+</div></body>
