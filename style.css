@@ -129,15 +129,15 @@ Drop Shadows
 
 /* Curved Shadows - This only does the left side */
 .curved:before {
-	top:0px;
-	bottom:0px;
+	top:10px;
+	bottom:10px;
 	left:0;
 	right:50%;
 	-moz-box-shadow: 0 0 20px rgb(36,113,190);
 	-webkit-box-shadow: 0 0 20px rgb(36,113,190);
 	box-shadow: 0 0 20px rgb(36,113,190);
-	-moz-border-radius: 10px / 100px;
-	border-radius: 10px / 100px;
+	-moz-border-radius: 0px / 100px;
+	border-radius: 0px / 100px;
 }
 /* Vertical Curve - both right and left sides */
 .curved-vt-2:before {
