@@ -166,6 +166,9 @@ body {
 */
 	position: relative;
 	margin: 20px auto;
+	
+	top: -20px;
+	
 	padding: 40px;
 }
 
