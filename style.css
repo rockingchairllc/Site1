@@ -132,7 +132,7 @@ Drop Shadows
 }
 
 
-/* Curved Shadows - This only does the left side*/
+/* Curved Shadows - This only does the left side
 .curved:before {
 	top:10px;
 	bottom:10px;
@@ -144,11 +144,11 @@ Drop Shadows
 	-moz-border-radius: 0px / 100px;
 	border-radius: 0px / 100px;
 }
-/* Vertical Curve - both right and left sides*/
+/* Vertical Curve - both right and left sides
 .curved-vt-2:before {
 	right:0;
 }
-
+*/
 
 /*********************************************************************************************************************************
 Begin the document
