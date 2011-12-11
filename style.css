@@ -109,7 +109,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#1d5693', end
 /******************************************************************************************************************************************************
 Drop Shadows
 ******************************************************************************************************************************************************/
-/* Base Drop Shadow */
+/* Base Drop Shadow
 .drop-shadow {
 	position:relative;
 	background-color:#fff;
@@ -123,6 +123,9 @@ Drop Shadows
 	position:absolute;
 	z-index:-2;
 }
+
+*/
+
 /* Curved Shadows - This only does the left side */
 .curved:before {
 	top:10px;
