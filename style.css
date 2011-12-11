@@ -164,8 +164,8 @@ body {
 	width: 900px;
 	position: relative;
 	top: 0px;
-	left: auto;
-	right: auto;
+	left: 20px;
+	right: 20px;
 	bottom: 0px;
 	padding: 40px;
 }
